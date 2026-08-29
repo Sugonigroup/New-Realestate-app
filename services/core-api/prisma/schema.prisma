@@ -599,6 +599,68 @@ model PayoutBatch {
   @@map("payout_batches")
 }
 
+// ── Finance: demands, receipts, ledger (Phase 2 WP-2A/2B, 01 §M7) ───────────
+
+model Demand {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  bookingId     String    @map("booking_id") @db.Uuid
+  unitId        String    @map("unit_id") @db.Uuid
+  entityId      String    @map("entity_id") @db.Uuid
+  seq           Int // position in the booking's schedule
+  demandNo      String    @map("demand_no") // gapless per entity+series (BR-L)
+  scheduleKey   String    @map("schedule_key")
+  label         String
+  amountPaise   BigInt    @map("amount_paise")
+  dueDate       DateTime? @map("due_date") // null → due on milestone certification
+  status        String    @default("due") // due|reminded|part_paid|paid|overdue|reversed
+  paidPaise     BigInt    @default(0) @map("paid_paise")
+  interestPaise BigInt    @default(0) @map("interest_paise")
+  lastDunningStep String? @map("last_dunning_step") // T-7|T-3|T-0|T+7 (idempotent)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([tenantId, bookingId, scheduleKey])
+  @@index([tenantId, status])
+  @@map("demands")
+}
+
+model Receipt {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  bookingId    String    @map("booking_id") @db.Uuid
+  unitId       String    @map("unit_id") @db.Uuid
+  amountPaise  BigInt    @map("amount_paise")
+  instrument   String // gateway|nach|neft|rtgs|cheque|cash
+  instrumentRef String?  @map("instrument_ref") // UTR / gateway payment id / cheque no
+  gatewayRef   String?   @map("gateway_ref")
+  status       String    @default("pending") // pending|cleared|bounced
+  bounceChargesPaise BigInt @default(0) @map("bounce_charges_paise")
+  allocations  Json? // [{demandId, amountPaise}]
+  clearedAt    DateTime? @map("cleared_at")
+  bouncedAt    DateTime? @map("bounced_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, instrumentRef])
+  @@index([tenantId, status])
+  @@map("receipts")
+}
+
+model CustomerLedgerEntry {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  unitId     String   @map("unit_id") @db.Uuid
+  bookingId  String   @map("booking_id") @db.Uuid
+  entryType  String   @map("entry_type") // demand|receipt|interest|bounce_charge|refund
+  refId      String   @map("ref_id") @db.Uuid
+  debitPaise BigInt   @map("debit_paise")
+  creditPaise BigInt  @map("credit_paise")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, unitId])
+  @@map("customer_ledger")
+}
+
 model Hold {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
