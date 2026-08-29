@@ -482,3 +482,41 @@ model SiteVisit {
   @@index([tenantId, scheduledAt])
   @@map("site_visits")
 }
+
+// ── Sales & inventory (Phase 1 WP-1C, 01 §M3) ───────────────────────────────
+
+model PriceList {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  projectId    String    @map("project_id") @db.Uuid
+  code         String
+  baseRatePaise BigInt   @map("base_rate_paise") // per sqm of SBA
+  floorRisePaise  BigInt  @default(0) @map("floor_rise_paise") // per sqm, per floor above ground
+  viewPremiumPaise BigInt @default(0) @map("view_premium_paise") // per sqm
+  plcPaise     BigInt    @default(0) @map("plc_paise") // flat preferential location charge
+  edcPaise     BigInt    @default(0) @map("edc_paise") // flat external development charges
+  idcPaise     BigInt    @default(0) @map("idc_paise") // flat internal development charges
+  clubPaise    BigInt    @default(0) @map("club_paise") // flat club membership
+  corpusPaise  BigInt    @default(0) @map("corpus_paise") // flat sinking/corpus fund
+  gstRateBps   Int       @default(500) @map("gst_rate_bps") // 5% non-ITC default (BR-F)
+  effectiveFrom DateTime @map("effective_from")
+  effectiveTo  DateTime? @map("effective_to") // exclusive
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, projectId, code])
+  @@index([tenantId, projectId, effectiveFrom])
+  @@map("price_lists")
+}
+
+model PaymentPlanTemplate {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  code       String
+  name       String
+  planType   String // CLP | DPLP | PLP
+  milestones Json // [{key,label,percent,offsetDays?,linkMilestone?}]
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("payment_plan_templates")
+}
