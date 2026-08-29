@@ -1,0 +1,224 @@
+// Phase 0 tables — `docs/architecture/05-database-architecture.md`, `02-architecture-c4.md §5`.
+// Conventions: tenant_id on every tenant-owned table (RLS enforced, see rls.sql),
+// UUIDv7-style ids (uuid default), timestamptz, soft delete via deleted_at where applicable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  slug      String   @unique
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  entities OrgEntity[]
+  users    User[]
+
+  @@map("tenants")
+}
+
+model OrgEntity {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  legalName String   @map("legal_name")
+  gstin     String?
+  stateCode String?  @map("state_code")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  verticals Vertical[]
+  projects  Project[]
+
+  @@index([tenantId])
+  @@map("org_entities")
+}
+
+model Vertical {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  entityId  String   @map("entity_id") @db.Uuid
+  name      String
+  segment   String // residential | commercial | plotted | mixed | redevelopment
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   OrgEntity @relation(fields: [entityId], references: [id])
+  projects Project[]
+
+  @@index([tenantId])
+  @@map("verticals")
+}
+
+model Project {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  entityId    String    @map("entity_id") @db.Uuid
+  verticalId  String    @map("vertical_id") @db.Uuid
+  code        String
+  name        String
+  segmentKind String    @map("segment_kind")
+  city        String?
+  state       String?
+  reraNumber  String?   @map("rera_number")
+  status      String    @default("planning")
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  entity   OrgEntity @relation(fields: [entityId], references: [id])
+  vertical Vertical  @relation(fields: [verticalId], references: [id])
+  units    Unit[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("projects")
+}
+
+model Unit {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  code      String
+  tower     String?
+  floor     Int?
+  unitType  String?  @map("unit_type")
+  carpetSqm Decimal? @map("carpet_sqm") @db.Decimal(12, 2)
+  sbuaSqm   Decimal? @map("sbua_sqm") @db.Decimal(12, 2)
+  state     String   @default("available") // available|held|blocked|booked|registered|cancelled
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@unique([tenantId, projectId, code])
+  @@index([tenantId, state])
+  @@map("units")
+}
+
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  email        String
+  phone        String?
+  fullName     String    @map("full_name")
+  passwordHash String?   @map("password_hash") // WP-0D: OTP-first; password optional
+  mfaSecret    String?   @map("mfa_secret")
+  status       String    @default("invited")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id])
+  roles  UserRole[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Role {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  template  String? // template code when cloned from seed
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("roles")
+}
+
+model Permission {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roleId    String @map("role_id") @db.Uuid
+  grant     String // permission pattern, e.g. "sales.*"
+  isDeny    Boolean @default(false) @map("is_deny")
+
+  @@index([roleId])
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  scope     String   @default("ALL") // ALL|ENTITY|PROJECT|OWN
+  scopeRefs String[] @map("scope_refs")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, userId])
+  @@map("user_roles")
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  deviceId  String?  @map("device_id")
+  ip        String?
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, userId])
+  @@map("sessions")
+}
+
+model AuditEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  actorKind     String   @default("human") @map("actor_kind") // human | ai_agent | system
+  action        String
+  entityType    String   @map("entity_type")
+  entityId      String?  @map("entity_id")
+  before        Json?
+  after         Json?
+  ip            String?
+  correlationId String?  @map("correlation_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, createdAt])
+  @@map("audit_event")
+}
+
+model OutboxEvent {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  aggregate   String
+  type        String // e.g. "booking.confirmed.v1"
+  payload     Json
+  actor       Json?
+  correlationId String? @map("correlation_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  publishedAt DateTime? @map("published_at")
+
+  @@index([publishedAt])
+  @@map("outbox")
+}
+
+model NumberSeries {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  entityId  String @map("entity_id") @db.Uuid
+  seriesKey String @map("series_key") // demand|receipt|aft|invoice|po
+  prefix    String
+  nextNo    Int    @default(1) @map("next_no")
+  gapless   Boolean @default(true)
+
+  @@unique([tenantId, entityId, seriesKey])
+  @@map("number_series")
+}
