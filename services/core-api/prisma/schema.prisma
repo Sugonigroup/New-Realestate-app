@@ -416,3 +416,69 @@ model DocumentVersion {
   @@unique([documentId, version])
   @@map("document_versions")
 }
+
+// ── CRM (Phase 1 WP-1A, 01 §M2) ─────────────────────────────────────────────
+
+model Lead {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  projectId        String?   @map("project_id") @db.Uuid
+  source           String // website | meta_ads | google_ads | portal | whatsapp | ivr | walkin | partner | import
+  sourceRef        String?   @map("source_ref") // provider lead id (dedupe + recon)
+  campaignId       String?   @map("campaign_id")
+  fullName         String    @map("full_name")
+  phone            String // normalized +91XXXXXXXXXX
+  email            String?
+  budgetPaise      BigInt?   @map("budget_paise")
+  segment          String?
+  language         String    @default("en")
+  status           String    @default("new") // new|contacted|qualified|visit_scheduled|visited|negotiation|booking|won|lost
+  lostReason       String?   @map("lost_reason")
+  score            Int       @default(0)
+  assignedUserId   String?   @map("assigned_user_id") @db.Uuid
+  slaRespondBy     DateTime? @map("sla_respond_by")
+  firstRespondedAt DateTime? @map("first_responded_at")
+  dedupFlag        String?   @map("dedup_flag") // duplicate|linked (with matchLeadId)
+  matchLeadId      String?   @map("match_lead_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  interactions Interaction[]
+
+  @@unique([tenantId, source, sourceRef])
+  @@index([tenantId, status])
+  @@index([tenantId, phone])
+  @@map("leads")
+}
+
+model Interaction {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  leadId      String   @map("lead_id") @db.Uuid
+  type        String // call | whatsapp | email | visit | note
+  disposition String?
+  notes       String?
+  byUserId    String?  @map("by_user_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id])
+
+  @@index([tenantId, leadId])
+  @@map("crm_interactions")
+}
+
+model SiteVisit {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  leadId      String    @map("lead_id") @db.Uuid
+  projectId   String?   @map("project_id") @db.Uuid
+  scheduledAt DateTime  @map("scheduled_at")
+  status      String    @default("scheduled") // scheduled|done|no_show|cancelled
+  checkedInAt DateTime? @map("checked_in_at")
+  geoLat      Decimal?  @map("geo_lat") @db.Decimal(10, 7)
+  geoLng      Decimal?  @map("geo_lng") @db.Decimal(10, 7)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, scheduledAt])
+  @@map("site_visits")
+}

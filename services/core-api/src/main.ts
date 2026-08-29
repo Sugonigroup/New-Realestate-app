@@ -4,7 +4,8 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module.js";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  // rawBody: needed for webhook HMAC verification (exact bytes signed)
+  const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   app.setGlobalPrefix("v1");
 
   const openapi = new DocumentBuilder()
