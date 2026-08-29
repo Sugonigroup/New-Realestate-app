@@ -661,6 +661,42 @@ model CustomerLedgerEntry {
   @@map("customer_ledger")
 }
 
+// ── Escrow: RERA 70% rule (Phase 2 WP-2C, BR-A / 12 §4) ─────────────────────
+
+model EscrowAccount {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  projectId       String   @map("project_id") @db.Uuid
+  accountRef      String   @map("account_ref") // designated account identifier
+  bankName        String   @map("bank_name")
+  collectedPaise  BigInt   @default(0) @map("collected_paise") // 70% bucket
+  withdrawnPaise  BigInt   @default(0) @map("withdrawn_paise")
+  totalProjectCostPaise BigInt @map("total_project_cost_paise") // benchmark for certified-% cap
+  certifiedPct    Decimal  @default(0) @map("certified_pct") @db.Decimal(5, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([tenantId, projectId])
+  @@map("escrow_accounts")
+}
+
+model EscrowWithdrawal {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  escrowAccountId  String   @map("escrow_account_id") @db.Uuid
+  amountPaise      BigInt   @map("amount_paise")
+  certifiedPct     Decimal  @map("certified_pct") @db.Decimal(5, 2)
+  form3Ref         String?  @map("form3_ref") // engineer certificate
+  form4Ref         String?  @map("form4_ref") // architect/CA certificate
+  status           String   @default("requested") // requested|approved|rejected|executed
+  requestedBy      String   @map("requested_by") @db.Uuid
+  approvedBy       String?  @map("approved_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, status])
+  @@map("escrow_withdrawals")
+}
+
 model Hold {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
