@@ -18,8 +18,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Build packages + core-api
-        run: pnpm turbo run build --filter='./packages/**' --filter='./services/**'
+      - name: Build packages + services + web
+        run: |
+          pnpm turbo run build --filter='./packages/**' --filter='./services/**'
+          pnpm --filter @buildos/erp-web exec next build
       - name: Tests
         run: pnpm turbo run test --filter='./packages/**' --filter='./services/**'
       - name: Typecheck

@@ -1,0 +1,26 @@
+/* BuildOS design tokens — 04-frontend-design.md §2 (zinc base, indigo primary,
+   4px spacing grid). Dark mode via .dark class overriding these variables. */
+:root {
+  --bo-primary: #4f46e5; /* indigo-600 */
+  --bo-primary-hover: #4338ca;
+  --bo-bg: #fafafa;
+  --bo-surface: #ffffff;
+  --bo-border: #e4e4e7;
+  --bo-text: #18181b;
+  --bo-text-muted: #71717a;
+  --bo-success: #16a34a;
+  --bo-warning: #d97706;
+  --bo-danger: #dc2626;
+  --bo-info: #2563eb;
+  --bo-radius: 8px;
+  --bo-space: 4px;
+  --bo-font: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.dark {
+  --bo-bg: #09090b;
+  --bo-surface: #18181b;
+  --bo-border: #27272a;
+  --bo-text: #fafafa;
+  --bo-text-muted: #a1a1aa;
+}
