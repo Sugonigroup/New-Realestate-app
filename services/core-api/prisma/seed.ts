@@ -5,6 +5,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 import { ROLE_TEMPLATES } from "@buildos/permissions";
+import { hashPassword } from "../src/auth/password.js";
 
 const prisma = new PrismaClient();
 
@@ -111,10 +112,21 @@ async function main(): Promise<void> {
       where: { tenantId: tenant.id, code: "super_admin" },
     });
     const u = await prisma.user.create({
-      data: { tenantId: tenant.id, email: "admin@shree.example", fullName: "Demo Admin", status: "active" },
+      data: {
+        tenantId: tenant.id,
+        email: "admin@shree.example",
+        fullName: "Demo Admin",
+        status: "active",
+        passwordHash: hashPassword("Buildos@demo1"),
+      },
     });
     await prisma.userRole.create({
       data: { tenantId: tenant.id, userId: u.id, roleId: superAdminRole!.id, scope: "ALL" },
+    });
+  } else if (!admin.passwordHash) {
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: { passwordHash: hashPassword("Buildos@demo1") },
     });
   }
 

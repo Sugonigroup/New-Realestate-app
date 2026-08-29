@@ -1,0 +1,43 @@
+# Local development stack (WP-0B). Production topology lives in infra/terraform.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: buildos
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  core-api:
+    build:
+      context: .
+      dockerfile: services/core-api/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:dev@postgres:5432/buildos?schema=public
+      APP_SECRET: ${APP_SECRET:-local-dev-secret-change-me}
+      PORT: 8080
+    ports: ["8080:8080"]
+
+  erp-web:
+    build:
+      context: .
+      dockerfile: apps/erp-web/Dockerfile
+    depends_on: [core-api]
+    environment:
+      NEXT_PUBLIC_CORE_API: http://localhost:8080
+    ports: ["3000:3000"]
+
+volumes:
+  pgdata:
