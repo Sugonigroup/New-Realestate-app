@@ -8,21 +8,55 @@ import {
   TokenError,
 } from "../common/jwt.js";
 import { verifyPassword } from "./password.js";
+import { verifyTotp } from "./totp.js";
+import { LoginLockout } from "./lockout.js";
+
+const MFA_REQUIRED_ROLES = new Set(["cfo", "finance_manager", "md", "super_admin", "compliance_head", "hr_manager"]);
 
 @Injectable()
 export class AuthService {
+  private readonly lockout = new LoginLockout();
+
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Password login (MFA enforced at WP-0D for finance/admin roles — 01 FR-1.3). */
-  async login(tenantSlug: string, email: string, password: string): Promise<{ accessToken: string; refreshToken: string }> {
+  /**
+   * Password login; TOTP step-up when enrolled, and roles that handle money or
+   * compliance must have MFA enrolled before they can sign in (01 FR-1.3).
+   */
+  async login(
+    tenantSlug: string,
+    email: string,
+    password: string,
+    mfaCode?: string,
+  ): Promise<{ accessToken: string; refreshToken: string } | { mfaRequired: true }> {
+    const userKey = `${tenantSlug}:${email}`;
+    if (this.lockout.isLocked(userKey)) {
+      throw new UnauthorizedException({ title: "Account temporarily locked", errors: ["too many failed attempts"] });
+    }
+
     const user = await this.prisma.user.findFirst({
-      where: { email, tenant: { slug: tenantSlug }, status: "active", deletedAt: null },
+      where: { email, status: "active", deletedAt: null, tenant: { slug: tenantSlug } },
       include: { roles: true },
     });
     if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) {
+      this.lockout.recordFailure(userKey);
       throw new UnauthorizedException({ title: "Invalid credentials" });
     }
-    const roles = await this.rolesOf(user.tenantId, user.roles.map((r) => r.roleId));
+
+    const roleCodes = await this.rolesOf(user.tenantId, user.roles.map((r) => r.roleId));
+    const mfaMandatory = roleCodes.some((r) => MFA_REQUIRED_ROLES.has(r));
+    if (user.mfaSecret) {
+      if (!mfaCode || !verifyTotp(user.mfaSecret, mfaCode, Date.now())) {
+        throw new UnauthorizedException({ title: "Invalid MFA code" });
+      }
+    } else if (mfaMandatory || mfaCode !== undefined) {
+      throw new UnauthorizedException({
+        title: "MFA enrolment required",
+        errors: mfaMandatory ? ["MFA is mandatory for this role"] : ["MFA code provided but not enrolled"],
+      });
+    }
+
+    this.lockout.clear(userKey);
     const session = await this.prisma.session.create({
       data: {
         tenantId: user.tenantId,
@@ -30,12 +64,8 @@ export class AuthService {
         expiresAt: new Date(Date.now() + REFRESH_TTL_SEC * 1000),
       },
     });
-    return this.issueTokens({
-      sub: user.id,
-      tenant: user.tenantId,
-      roles,
-      sid: session.id,
-    });
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    return this.issueTokens({ sub: user.id, tenant: user.tenantId, roles: roleCodes, sid: session.id });
   }
 
   /** Refresh rotation: verifies refresh token + live session, issues new pair. */
