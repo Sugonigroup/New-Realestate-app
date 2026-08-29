@@ -5,6 +5,7 @@ import { HealthModule } from "./health/health.module.js";
 import { PermissionsModule } from "./permissions/permissions.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { WorkflowModule } from "./workflow/workflow.module.js";
+import { NotifyModule } from "./notify/notify.module.js";
 import { RequestContextModule } from "./common/request-context.module.js";
 import { RequestContextMiddleware } from "./common/request-context.middleware.js";
 import { TenantContextMiddleware } from "./common/tenant-context.middleware.js";
@@ -12,7 +13,7 @@ import { ProblemJsonExceptionFilter } from "./common/problem-exception.filter.js
 import { AppController } from "./app.controller.js";
 
 @Module({
-  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule],
+  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule],
   controllers: [AppController],
   providers: [{ provide: APP_FILTER, useClass: ProblemJsonExceptionFilter }],
 })

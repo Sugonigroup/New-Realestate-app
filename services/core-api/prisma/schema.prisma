@@ -291,3 +291,86 @@ model Delegation {
   @@index([tenantId, toUserId])
   @@map("delegations")
 }
+
+// ── Notification hub (WP-0H, 01 §M11 / 05 §1–3 / 20) ────────────────────────
+
+model NotificationTemplate {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  key            String
+  channel        String // whatsapp | email | sms
+  locale         String   @default("en")
+  category       String   @default("utility") // utility | marketing | authentication
+  subject        String? // email only
+  body           String // {{var}} placeholders
+  approvalStatus String   @default("not_required") @map("approval_status") // whatsapp HSM: pending|approved|rejected
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, key, channel, locale, version])
+  @@map("notification_templates")
+}
+
+model ConsentLedger {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  personRef String    @map("person_ref") // phone/email/user id
+  channel   String // whatsapp | email | sms
+  purpose   String // transactional | promotional
+  grantedAt DateTime? @map("granted_at")
+  revokedAt DateTime? @map("revoked_at")
+  source    String? // dpdp notice | whatsapp optin | stop keyword
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, personRef, channel, purpose])
+  @@map("consent_ledger")
+}
+
+model MessageLog {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  channel        String
+  templateKey    String?   @map("template_key")
+  toRef          String    @map("to_ref")
+  toAddress      String    @map("to_address")
+  vars           Json?
+  status         String // queued|sent|delivered|read|failed|suppressed|deferred
+  failureReason  String?   @map("failure_reason")
+  deferUntil     DateTime? @map("defer_until")
+  journeyId      String?   @map("journey_id") @db.Uuid
+  correlationId  String?   @map("correlation_id")
+  providerId     String?   @map("provider_id")
+  sentAt         DateTime? @map("sent_at")
+  statusUpdatedAt DateTime @default(now()) @map("status_updated_at")
+
+  @@index([tenantId, toRef])
+  @@index([tenantId, status])
+  @@map("message_log")
+}
+
+model Journey {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  key        String
+  definition Json // steps per journey.ts
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, key])
+  @@map("journeys")
+}
+
+model JourneyState {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  journeyId  String    @map("journey_id") @db.Uuid
+  personRef  String    @map("person_ref")
+  stepIndex  Int       @default(0) @map("step_index")
+  status     String    @default("running") // running|completed|stopped
+  context    Json?
+  nextRunAt  DateTime? @map("next_run_at")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([tenantId, journeyId, status])
+  @@map("journey_states")
+}
