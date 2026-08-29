@@ -374,3 +374,45 @@ model JourneyState {
   @@index([tenantId, journeyId, status])
   @@map("journey_states")
 }
+
+// ── Document vault (WP-0F, 01 §M12 / 03 WP-0F / 15) ─────────────────────────
+
+model Document {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  projectId     String?   @map("project_id") @db.Uuid
+  folderPath    String    @map("folder_path") // "/legal/approvals"
+  name          String
+  docClass      String    @map("doc_class") // drawing|contract|boq|invoice|approval|certificate|site_photo|policy|other
+  currentVersion Int      @default(0) @map("current_version")
+  createdBy     String    @map("created_by") @db.Uuid
+  deletedAt     DateTime? @map("deleted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  versions DocumentVersion[]
+
+  @@unique([tenantId, folderPath, name])
+  @@index([tenantId, projectId])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  documentId String   @map("document_id") @db.Uuid
+  version    Int
+  storageKey String   @unique @map("storage_key")
+  sizeBytes  Int      @map("size_bytes")
+  mimeType   String   @map("mime_type")
+  sha256     String
+  uploadedBy String   @map("uploaded_by") @db.Uuid
+  ocrStatus  String   @default("pending") @map("ocr_status") // pending|processed|failed (WP: doc-intelligence)
+  expiryAt   DateTime? @map("expiry_at") // certificates/approvals
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@unique([documentId, version])
+  @@map("document_versions")
+}
