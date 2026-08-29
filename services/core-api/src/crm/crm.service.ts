@@ -4,6 +4,7 @@ import { normalizeLead } from "./normalize.js";
 import { dedupDecision, type ExistingLead } from "./dedup.js";
 import { route, type RoutingRule } from "./routing.js";
 import { slaRespondBy } from "./sla.js";
+import { scoreLead } from "./scoring.js";
 
 export interface IngestInput {
   tenantId: string;
@@ -79,6 +80,15 @@ export class CrmService {
         segment: input.segment,
         language: input.language ?? "en",
         status: "new",
+        score: scoreLead({
+          source: input.source,
+          createdDaysAgo: 0,
+          lastActivityDaysAgo: null,
+          interactionCount: 0,
+          hasDoneVisit: false,
+          budgetPaise: input.budgetPaise ?? null,
+          projectMinBudgetPaise: null,
+        }).score,
         assignedUserId: routed?.assignedUserId,
         slaRespondBy: slaRespondBy(now),
         dedupFlag: decision.kind === "linked" ? "linked" : null,
