@@ -32,6 +32,8 @@ export const JOURNEY_DEFS = {
   },
   // Stale reactivation (30/60/90-day buckets) — nightly job picks the template.
   stale_reactivation: { steps: [{ type: "send", channel: "whatsapp", templateKey: "reactivation" }] },
+  // Booking confirmed — welcome + next steps (WP-1D).
+  booking_welcome: { steps: [{ type: "send", channel: "whatsapp", templateKey: "booking_confirmed" }] },
 } satisfies Record<string, JourneyDefinition>;
 
 /** Wires CRM events to the notification hub's journey engine (WP-0H). */

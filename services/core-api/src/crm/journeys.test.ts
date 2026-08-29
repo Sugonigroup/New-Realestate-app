@@ -27,12 +27,14 @@ function makeFake(leads: Array<Record<string, unknown>> = []) {
 }
 
 describe("LeadAutomationService (WP-1B)", () => {
-  it("registers the 5 default journeys per tenant", async () => {
+  it("registers the 6 default journeys per tenant", async () => {
     const { prisma, notify, registered } = makeFake();
     const svc = new LeadAutomationService(prisma as unknown as PrismaService, notify as unknown as NotificationService);
     const n = await svc.registerDefaultJourneys("t-1");
-    expect(n).toBe(5);
-    expect(registered).toEqual(["lead_ack", "warm_nurture", "visit_reminder", "no_show_recovery", "stale_reactivation"]);
+    expect(n).toBe(6);
+    expect(registered).toEqual([
+      "lead_ack", "warm_nurture", "visit_reminder", "no_show_recovery", "stale_reactivation", "booking_welcome",
+    ]);
   });
 
   it("lead.created triggers instant ack + starts the nurture journey", async () => {

@@ -520,3 +520,52 @@ model PaymentPlanTemplate {
   @@unique([tenantId, code])
   @@map("payment_plan_templates")
 }
+
+model Hold {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  unitId    String    @map("unit_id") @db.Uuid
+  leadId    String?   @map("lead_id") @db.Uuid
+  createdBy String    @map("created_by") @db.Uuid
+  holdHours Int       @default(24)
+  expiresAt DateTime  @map("expires_at")
+  status    String    @default("active") // active|expired|converted|released
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, unitId, status])
+  @@map("holds")
+}
+
+model Booking {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  unitId         String    @map("unit_id") @db.Uuid
+  holdId         String?   @map("hold_id") @db.Uuid
+  leadId         String?   @map("lead_id") @db.Uuid
+  code           String? // gapless series per entity (BR-L), assigned on confirm
+  customerName   String    @map("customer_name")
+  customerPhone  String    @map("customer_phone")
+  coApplicants   Json?
+  kyc            Json? // PAN/Aadhaar refs (masked), verified flag
+  planCode       String    @map("plan_code")
+  priceSnapshot  Json      @map("price_snapshot") // immutable price lines at confirm
+  scheduleSnapshot Json?   @map("schedule_snapshot") // immutable demand schedule
+  totalPaise     BigInt    @map("total_paise")
+  discountPct    Decimal   @default(0) @map("discount_pct") @db.Decimal(5, 2)
+  discountPaise  BigInt    @default(0) @map("discount_paise")
+  workflowId     String?   @map("workflow_id") @db.Uuid // discount approval instance
+  status         String    @default("draft") // draft|pending_approval|confirmed|cancelled
+  aftStatus      String    @default("not_started") @map("aft_status") // not_started|draft|sent|signed|registered
+  aftDocId       String?   @map("aft_doc_id") @db.Uuid
+  bookingDate    DateTime? @map("booking_date")
+  cancelledAt    DateTime? @map("cancelled_at")
+  cancelReason   String?   @map("cancel_reason")
+  forfeitPaise   BigInt?   @map("forfeit_paise")
+  refundPaise    BigInt?   @map("refund_paise")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([tenantId, status])
+  @@index([tenantId, unitId])
+  @@map("bookings")
+}
