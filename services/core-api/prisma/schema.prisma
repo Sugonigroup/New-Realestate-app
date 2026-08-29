@@ -521,6 +521,84 @@ model PaymentPlanTemplate {
   @@map("payment_plan_templates")
 }
 
+// ── Channel partners & commissions (Phase 1 WP-1E, 01 §M3.8) ────────────────
+
+model ChannelPartner {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  code            String
+  name            String
+  phone           String
+  email           String?
+  reraAgentNo     String?   @map("rera_agent_no") // Section 9/10 agent registration
+  reraAgentExpiry DateTime? @map("rera_agent_expiry")
+  kycDocs         Json?
+  status          String    @default("pending") // pending|active|suspended|blacklisted
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("channel_partners")
+}
+
+model PartnerPanel {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  partnerId    String   @map("partner_id") @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  active       Boolean  @default(true)
+  creditWindowDays Int  @default(30) @map("credit_window_days")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, partnerId, projectId])
+  @@map("partner_panels")
+}
+
+model CommissionPlan {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  kind      String // flat | slab
+  rateBps   Int     @map("rate_bps") // flat rate (e.g. 200 = 2%)
+  slabs     Json? // [{fromPaise,toPaise,rateBps}] progressive tiers
+  tdsBps    Int     @default(200) @map("tds_bps") // TDS 194H (BR-H)
+  active    Boolean @default(true)
+
+  @@unique([tenantId, code])
+  @@map("commission_plans")
+}
+
+model CommissionLedgerEntry {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  partnerId     String   @map("partner_id") @db.Uuid
+  bookingId     String   @map("booking_id") @db.Uuid
+  projectId     String?  @map("project_id") @db.Uuid
+  accruedPaise  BigInt   @map("accrued_paise")
+  reversedPaise BigInt   @default(0) @map("reversed_paise")
+  status        String   @default("accrued") // accrued|reversed|paid
+  sourceEvent   String   @map("source_event") // receipt.cleared.v1
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, partnerId, status])
+  @@map("commission_ledger")
+}
+
+model PayoutBatch {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  partnerId  String   @map("partner_id") @db.Uuid
+  status     String   @default("draft") // draft|approved|paid
+  entryIds   String[] @map("entry_ids")
+  grossPaise BigInt   @map("gross_paise")
+  tdsPaise   BigInt   @map("tds_paise")
+  netPaise   BigInt   @map("net_paise")
+  approvedBy String?  @map("approved_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("payout_batches")
+}
+
 model Hold {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
@@ -540,6 +618,7 @@ model Booking {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId       String    @map("tenant_id") @db.Uuid
   unitId         String    @map("unit_id") @db.Uuid
+  projectId      String?   @map("project_id") @db.Uuid
   holdId         String?   @map("hold_id") @db.Uuid
   leadId         String?   @map("lead_id") @db.Uuid
   code           String? // gapless series per entity (BR-L), assigned on confirm
