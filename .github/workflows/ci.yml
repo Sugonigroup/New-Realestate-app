@@ -22,6 +22,7 @@ jobs:
         run: |
           pnpm turbo run build --filter='./packages/**' --filter='./services/**'
           pnpm --filter @buildos/erp-web exec next build
+          pnpm --filter @buildos/customer-portal exec next build
       - name: Tests
         run: pnpm turbo run test --filter='./packages/**' --filter='./services/**'
       - name: Typecheck
