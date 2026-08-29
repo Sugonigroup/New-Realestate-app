@@ -54,6 +54,9 @@ importers:
 
   services/core-api:
     dependencies:
+      '@buildos/money-utils':
+        specifier: workspace:*
+        version: link:../../packages/money-utils
       '@buildos/permissions':
         specifier: workspace:*
         version: link:../../packages/permissions
@@ -72,6 +75,9 @@ importers:
       '@prisma/client':
         specifier: ^6.2.0
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      jose:
+        specifier: ^6.2.10
+        version: 6.2.10
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -1151,6 +1157,9 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
+
+  jose@6.2.10:
+    resolution: {integrity: sha512-iiW7J9qRFlGxvCOIBDBDxFePQSn7ZMAnrYGhrrOo6siO/MIqwfyilLR27pkfDgUk+raLuzADS8A3S/KLBisc0g==}
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
@@ -2478,6 +2487,8 @@ snapshots:
   iterare@1.2.1: {}
 
   jiti@2.7.0: {}
+
+  jose@6.2.10: {}
 
   js-tokens@9.0.1: {}
 

@@ -2,56 +2,55 @@ import { randomUUID } from "node:crypto";
 import { Injectable, type NestMiddleware } from "@nestjs/common";
 import type { NextFunction, Request, Response } from "express";
 import { getRequestContext, runWithRequestContext, type RequestContext } from "./request-context.js";
-
-interface JwtPayloadLike {
-  sub?: string;
-  tenant?: string;
-  roles?: string[];
-}
+import { verifyToken } from "./jwt.js";
 
 /**
- * Resolves tenant/user from the bearer token's payload.
- *
- * WP-0D will replace the unsigned decode with a verified JWT (RS256, JWKS) — the
- * `X-Tenant` header path exists ONLY for local development and is rejected when
- * NODE_ENV=production (`03 §1`: tenant is derived from the token, never the client).
+ * Resolves tenant/user from a **verified** bearer JWT (03 §1: tenant is derived
+ * from the token, never the client). Invalid tokens are skipped here and surface
+ * as 403 at the guard layer; the dev `X-Tenant` header path exists ONLY outside
+ * production and is rejected under NODE_ENV=production.
  */
-export function resolveTenantFromToken(authHeader: string | undefined): JwtPayloadLike | undefined {
-  if (!authHeader?.startsWith("Bearer ")) return undefined;
-  const token = authHeader.slice("Bearer ".length).trim();
-  const parts = token.split(".");
-  if (parts.length !== 3) return undefined; // not a JWT-shaped token
-  try {
-    return JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as JwtPayloadLike;
-  } catch {
-    return undefined;
+export async function resolveContext(
+  authHeader: string | undefined,
+  devTenantHeader: string | undefined,
+  isProduction: boolean,
+): Promise<RequestContext> {
+  let tenantId: string | undefined;
+  let userId: string | undefined;
+  let roleCodes: string[] | undefined;
+
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      const claims = await verifyToken(authHeader.slice("Bearer ".length).trim(), "access");
+      tenantId = claims.tenant;
+      userId = claims.sub;
+      roleCodes = claims.roles;
+    } catch {
+      // invalid/expired: fall through unauthenticated (guards answer 403)
+    }
   }
+
+  if (!tenantId && !isProduction && devTenantHeader) {
+    tenantId = devTenantHeader;
+    userId = userId ?? "dev-user";
+    roleCodes = roleCodes ?? ["super_admin"];
+  }
+
+  return {
+    correlationId: getRequestContext()?.correlationId ?? randomUUID(),
+    tenantId,
+    userId,
+    roleCodes,
+  };
 }
 
 @Injectable()
 export class TenantContextMiddleware implements NestMiddleware {
   use(req: Request, _res: Response, next: NextFunction): void {
-    const base = getRequestContext();
-    const payload = resolveTenantFromToken(req.header("authorization"));
-    let tenantId = payload?.tenant;
-    let userId = payload?.sub;
-    let roleCodes = payload?.roles;
-
-    if (!tenantId && process.env.NODE_ENV !== "production") {
-      const devHeader = req.header("x-tenant-id");
-      if (devHeader) {
-        tenantId = devHeader;
-        userId = userId ?? "dev-user";
-        roleCodes = roleCodes ?? ["super_admin"];
-      }
-    }
-
-    const ctx: RequestContext = {
-      correlationId: base?.correlationId ?? randomUUID(),
-      tenantId,
-      userId,
-      roleCodes,
-    };
-    runWithRequestContext(ctx, () => next());
+    void resolveContext(
+      req.header("authorization"),
+      req.header("x-tenant-id"),
+      process.env.NODE_ENV === "production",
+    ).then((ctx) => runWithRequestContext(ctx, () => next()));
   }
 }

@@ -115,6 +115,7 @@ model User {
   mfaSecret    String?   @map("mfa_secret")
   status       String    @default("invited")
   lastLoginAt  DateTime? @map("last_login_at")
+  deletedAt    DateTime? @map("deleted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
 
@@ -221,4 +222,72 @@ model NumberSeries {
 
   @@unique([tenantId, entityId, seriesKey])
   @@map("number_series")
+}
+
+// ── Workflow engine (WP-0E, 03 §3 / 09 §1) ─────────────────────────────────
+
+model WorkflowDef {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  key       String
+  version   Int      @default(1)
+  matrix    Json // MatrixEntry[] — authority matrix as data (ADR-AI3)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, key, version])
+  @@map("workflow_defs")
+}
+
+model WorkflowInstance {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  action          String // matrix action, e.g. "sales.discount"
+  state           String    @default("pending") // draft|pending|approved|rejected|withdrawn|expired
+  valuePaise      BigInt    @map("value_paise")
+  payload         Json
+  result          Json?
+  initiatorUserId String    @map("initiator_user_id") @db.Uuid
+  correlationId   String?   @map("correlation_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  tasks ApprovalTask[]
+
+  @@index([tenantId, state])
+  @@map("workflow_instances")
+}
+
+model ApprovalTask {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  instanceId     String    @map("instance_id") @db.Uuid
+  sequence       Int       @default(1) // 1 = approver, 2 = checker (maker-checker)
+  state          String    @default("pending") // pending|approved|rejected|query|escalated|cancelled
+  assignedRole   String    @map("assigned_role")
+  assignedUserId String?   @map("assigned_user_id") @db.Uuid
+  slaDue         DateTime  @map("sla_due")
+  decidedBy      String?   @map("decided_by") @db.Uuid
+  decision       String?
+  comment        String?
+  decidedAt      DateTime? @map("decided_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  instance WorkflowInstance @relation(fields: [instanceId], references: [id])
+
+  @@index([tenantId, assignedRole, state])
+  @@map("approval_tasks")
+}
+
+model Delegation {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  fromUserId   String   @map("from_user_id") @db.Uuid
+  toUserId     String   @map("to_user_id") @db.Uuid
+  actionClasses String[] @map("action_classes")
+  validFrom    DateTime @map("valid_from")
+  validTo      DateTime @map("valid_to")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, toUserId])
+  @@map("delegations")
 }

@@ -1,21 +1,28 @@
-import { describe, expect, it } from "vitest";
-import { resolveTenantFromToken } from "./tenant-context.middleware.js";
+import { beforeAll, describe, expect, it } from "vitest";
+import { signToken } from "./jwt.js";
+import { resolveContext } from "./tenant-context.middleware.js";
 
-function jwt(payload: object): string {
-  const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  return `${b64({ alg: "none" })}.${b64(payload)}.sig`;
-}
+beforeAll(() => {
+  process.env.APP_SECRET ??= "test-secret-0123456789abcdef";
+});
 
-describe("tenant context resolution (WP-0C)", () => {
-  it("extracts tenant/user/roles from a bearer JWT payload", () => {
-    const token = jwt({ sub: "u-1", tenant: "t-1", roles: ["sales_manager"] });
-    const out = resolveTenantFromToken(`Bearer ${token}`);
-    expect(out).toEqual({ sub: "u-1", tenant: "t-1", roles: ["sales_manager"] });
+describe("tenant context resolution (WP-0C/WP-0D)", () => {
+  it("extracts tenant/user/roles from a verified bearer JWT", async () => {
+    const token = await signToken({ sub: "u-1", tenant: "t-1", roles: ["sales_manager"] }, { type: "access", ttlSec: 60 });
+    const ctx = await resolveContext(`Bearer ${token}`, undefined, false);
+    expect(ctx).toMatchObject({ tenantId: "t-1", userId: "u-1", roleCodes: ["sales_manager"] });
   });
 
-  it("returns undefined for non-JWT or garbage input", () => {
-    expect(resolveTenantFromToken(undefined)).toBeUndefined();
-    expect(resolveTenantFromToken("Bearer abc")).toBeUndefined();
-    expect(resolveTenantFromToken("Bearer a.@@@.c")).toBeUndefined();
+  it("unauthenticated context for invalid/garbage tokens", async () => {
+    const ctx = await resolveContext("Bearer not.a.jwt", undefined, false);
+    expect(ctx.tenantId).toBeUndefined();
+    expect(await resolveContext(undefined, undefined, false)).toMatchObject({ tenantId: undefined });
+  });
+
+  it("dev X-Tenant header works outside production and is ignored in production", async () => {
+    const dev = await resolveContext(undefined, "t-dev", false);
+    expect(dev).toMatchObject({ tenantId: "t-dev", userId: "dev-user", roleCodes: ["super_admin"] });
+    const prod = await resolveContext(undefined, "t-dev", true);
+    expect(prod.tenantId).toBeUndefined();
   });
 });
