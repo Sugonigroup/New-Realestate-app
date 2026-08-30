@@ -10,7 +10,7 @@ describe("role-filtered navigation (04 §3)", () => {
 
   it("sales executive sees Dashboard + CRM/Sales, not Finance/HR/Settings", () => {
     const keys = filterNav(["sales_executive"], MAP).map((n) => n.key);
-    expect(keys).toEqual(["dashboard", "crm", "sales"]);
+    expect(keys).toEqual(["dashboard", "crm", "sales", "sales_bookings"]);
   });
 
   it("auditor (read-only everywhere) sees all modules read-only", () => {
