@@ -1014,17 +1014,21 @@ model Contractor {
 // ── Procurement chain (Phase 3, 01 §M6) ─────────────────────────────────────
 
 model PurchaseOrder {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
-  projectId     String   @map("project_id") @db.Uuid
-  contractorId  String?  @map("contractor_id")
-  poNo          String   @map("po_no")
-  status        String   @default("open") // open|partial|received|cancelled
-  totalPaise    BigInt   @default(0) @map("total_paise")
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  projectId     String    @map("project_id") @db.Uuid
+  contractorId  String?   @map("contractor_id")
+  vendorId      String?   @map("vendor_id") @db.Uuid
+  poNo          String    @map("po_no")
+  status        String    @default("open") // open|partial|received|cancelled
+  totalPaise    BigInt    @default(0) @map("total_paise")
   promisedDate  DateTime? @map("promised_date")
   receivedDate  DateTime? @map("received_date")
-  receivedInFull Boolean @default(false) @map("received_in_full")
-  createdAt     DateTime @default(now()) @map("created_at")
+  receivedInFull Boolean  @default(false) @map("received_in_full")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  lines PurchaseOrderLine[]
+  grns  Grn[]
 
   @@unique([tenantId, poNo])
   @@index([tenantId, status])
@@ -1047,6 +1051,173 @@ model MaterialStock {
 
   @@unique([tenantId, projectId, materialId])
   @@map("material_stock")
+}
+
+// ── Procurement chain P1a: vendor → PR → RFQ → quotes → PO → GRN ────────────
+
+model Vendor {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  gstin     String?
+  status    String   @default("active") // active|suspended|blacklisted
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("vendors")
+}
+
+model PurchaseRequisition {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  reqNo       String    @map("req_no")
+  projectId   String    @map("project_id") @db.Uuid
+  requestedBy String    @map("requested_by")
+  requiredBy  DateTime? @map("required_by")
+  status      String    @default("draft") // draft|approved|cancelled|converted
+  approvedBy  String?   @map("approved_by")
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  lines PurchaseRequisitionLine[]
+
+  @@unique([tenantId, reqNo])
+  @@index([tenantId, status])
+  @@map("purchase_requisitions")
+}
+
+model PurchaseRequisitionLine {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  requisitionId String  @map("requisition_id") @db.Uuid
+  materialId    String  @map("material_id")
+  materialName  String  @map("material_name")
+  unit          String
+  qty           Decimal @db.Decimal(18, 4)
+  estRatePaise  BigInt  @default(0) @map("est_rate_paise")
+  remark        String?
+
+  requisition PurchaseRequisition @relation(fields: [requisitionId], references: [id])
+
+  @@index([tenantId, requisitionId])
+  @@map("purchase_requisition_lines")
+}
+
+model Rfq {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  rfqNo         String    @map("rfq_no")
+  requisitionId String    @map("requisition_id") @db.Uuid
+  status        String    @default("open") // open|awarded|cancelled
+  closesAt      DateTime? @map("closes_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  lines RfqLine[]
+  quotes RfqQuote[]
+
+  @@unique([tenantId, rfqNo])
+  @@index([tenantId, status])
+  @@map("rfqs")
+}
+
+model RfqLine {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  rfqId        String  @map("rfq_id") @db.Uuid
+  materialId   String  @map("material_id")
+  materialName String  @map("material_name")
+  unit         String
+  qty          Decimal @db.Decimal(18, 4)
+
+  rfq Rfq @relation(fields: [rfqId], references: [id])
+
+  @@index([tenantId, rfqId])
+  @@map("rfq_lines")
+}
+
+model RfqQuote {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  rfqId        String   @map("rfq_id") @db.Uuid
+  vendorId     String   @map("vendor_id") @db.Uuid
+  totalPaise   BigInt   @default(0) @map("total_paise")
+  deliveryDays Int      @default(0)
+  status       String   @default("received") // received|accepted|rejected
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  rfq   Rfq            @relation(fields: [rfqId], references: [id])
+  lines RfqQuoteLine[]
+
+  @@index([tenantId, rfqId])
+  @@map("rfq_quotes")
+}
+
+model RfqQuoteLine {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String  @map("tenant_id") @db.Uuid
+  quoteId    String  @map("quote_id") @db.Uuid
+  materialId String  @map("material_id")
+  qty        Decimal @db.Decimal(18, 4)
+  ratePaise  BigInt  @map("rate_paise")
+
+  quote RfqQuote @relation(fields: [quoteId], references: [id])
+
+  @@index([tenantId, quoteId])
+  @@map("rfq_quote_lines")
+}
+
+model PurchaseOrderLine {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  orderId     String  @map("order_id") @db.Uuid
+  materialId  String  @map("material_id")
+  materialName String @map("material_name")
+  unit        String
+  qty         Decimal @db.Decimal(18, 4)
+  ratePaise   BigInt  @map("rate_paise")
+  receivedQty Decimal @default(0) @map("received_qty") @db.Decimal(18, 4)
+
+  order PurchaseOrder @relation(fields: [orderId], references: [id])
+
+  @@index([tenantId, orderId])
+  @@map("purchase_order_lines")
+}
+
+model Grn {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  grnNo      String   @map("grn_no")
+  orderId    String   @map("order_id") @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  vendorId   String   @map("vendor_id") @db.Uuid
+  status     String   @default("posted") // posted only (receipts are immutable)
+  receivedAt DateTime @map("received_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  order PurchaseOrder @relation(fields: [orderId], references: [id])
+  lines GrnLine[]
+
+  @@unique([tenantId, grnNo])
+  @@index([tenantId, vendorId])
+  @@map("grns")
+}
+
+model GrnLine {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  grnId       String  @map("grn_id") @db.Uuid
+  poLineId    String  @map("po_line_id") @db.Uuid
+  materialId  String  @map("material_id")
+  qty         Decimal @db.Decimal(18, 4)
+  acceptedQty Decimal @map("accepted_qty") @db.Decimal(18, 4)
+  rejectedQty Decimal @default(0) @map("rejected_qty") @db.Decimal(18, 4)
+  remark      String?
+
+  grn Grn @relation(fields: [grnId], references: [id])
+
+  @@index([tenantId, grnId])
+  @@map("grn_lines")
 }
 
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
