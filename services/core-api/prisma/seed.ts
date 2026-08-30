@@ -136,7 +136,98 @@ async function main(): Promise<void> {
     create: { tenantId: tenant.id, entityId: entityId1, seriesKey: "receipt", prefix: "RCPT", gapless: true },
   });
 
-  console.log("Seed complete: tenant=shree-developers, 2 entities, 3 verticals, 2 projects, 20 units, roles+admin.");
+  console.log("Seed complete: 16-module demo — tenant, entities, verticals, projects, units, roles, admin, campaign, employees, contractor, activities, milestones, material stock, PO, statutory filings.");
+
+  // ── Full 16-module demo data ──
+  const project = await prisma.project.findFirst({ where: { tenantId: tenant.id, code: "VRD" } });
+  if (!project) throw new Error("VRD project not found after creation");
+
+  // Marketing: campaign + spend
+  const campaignExists = await prisma.campaign.findFirst({ where: { tenantId: tenant.id, name: "Verde Launch — Meta" } });
+  if (!campaignExists) {
+    const c = await prisma.campaign.create({ data: { tenantId: tenant.id, projectId: project.id, name: "Verde Launch — Meta", channel: "meta" } });
+    await prisma.campaignSpend.createMany({
+      data: [1, 2, 3, 4, 5, 6, 7].map((d) => ({
+        tenantId: tenant.id, campaignId: c.id,
+        date: new Date(Date.UTC(2026, 8, d)),
+        spendPaise: BigInt(500_000 + d * 10_000), leads: 15 + d,
+      })),
+    });
+  }
+
+  // HR: employees, contractor, attendance
+  const contractorExists = await prisma.contractor.findFirst({ where: { tenantId: tenant.id, code: "CTR-1" } });
+  if (!contractorExists) {
+    await prisma.contractor.create({
+      data: { tenantId: tenant.id, code: "CTR-1", name: "Shree Constructions", clraExpiry: new Date("2027-06-30") },
+    });
+  }
+  const empCount = await prisma.employee.count({ where: { tenantId: tenant.id } });
+  if (empCount === 0) {
+    await prisma.employee.createMany({
+      data: [
+        { tenantId: tenant.id, code: "EMP-001", name: "Suresh Babu", phone: "+91981112233", role: "site_engineer", stateCode: "KA", basicMonthlyPaise: 4_000_000n, hraMonthlyPaise: 2_000_000n, specialMonthlyPaise: 2_000_000n },
+        { tenantId: tenant.id, code: "EMP-002", name: "Priya Sharma", phone: "+91982223344", role: "sales_executive", stateCode: "KA", basicMonthlyPaise: 3_000_000n, hraMonthlyPaise: 1_500_000n, specialMonthlyPaise: 2_500_000n },
+        { tenantId: tenant.id, code: "EMP-003", name: "Kiran Kumar", phone: "+91983334455", role: "site_engineer", stateCode: "KA", basicMonthlyPaise: 3_500_000n, hraMonthlyPaise: 1_750_000n, specialMonthlyPaise: 1_750_000n },
+      ],
+    });
+  }
+
+  // Construction: activities + milestones
+  const actCount = await prisma.constructionActivity.count({ where: { projectId: project.id } });
+  if (actCount === 0) {
+    await prisma.constructionActivity.createMany({
+      data: [
+        { tenantId: tenant.id, projectId: project.id, code: "mobilisation", name: "Mobilisation", durationDays: 30, deps: [] },
+        { tenantId: tenant.id, projectId: project.id, code: "excavation", name: "Excavation", durationDays: 45, deps: ["mobilisation"] },
+        { tenantId: tenant.id, projectId: project.id, code: "foundation", name: "Foundation", durationDays: 90, deps: ["excavation"] },
+        { tenantId: tenant.id, projectId: project.id, code: "plinth", name: "Plinth", durationDays: 25, deps: ["foundation"] },
+        { tenantId: tenant.id, projectId: project.id, code: "structure", name: "Structure RCC", durationDays: 252, deps: ["plinth"] },
+      ],
+    });
+  }
+  const milestoneCount = await prisma.milestone.count({ where: { projectId: project.id } });
+  if (milestoneCount === 0) {
+    await prisma.milestone.createMany({
+      data: [
+        { tenantId: tenant.id, projectId: project.id, key: "plinth", label: "Plinth complete", state: "certified", certifiedAt: new Date("2026-06-15") },
+        { tenantId: tenant.id, projectId: project.id, key: "slab_3", label: "3rd slab", state: "pending" },
+      ],
+    });
+  }
+
+  // Procurement: material stock + PO
+  const stockCount = await prisma.materialStock.count({ where: { projectId: project.id } });
+  if (stockCount === 0) {
+    await prisma.materialStock.createMany({
+      data: [
+        { tenantId: tenant.id, projectId: project.id, materialId: "cement-opc53", materialName: "OPC 53 Cement", unit: "bag", stockQty: 850, avgDailyConsumption: 60, inboundPoQty: 0, leadTimeDays: 7, safetyDays: 3 },
+        { tenantId: tenant.id, projectId: project.id, materialId: "tmt-12mm", materialName: "TMT 12mm", unit: "kg", stockQty: 12_000, avgDailyConsumption: 400, inboundPoQty: 5_000, leadTimeDays: 10, safetyDays: 5 },
+      ],
+    });
+  }
+  const poExists = await prisma.purchaseOrder.findFirst({ where: { tenantId: tenant.id, poNo: "PO-0001" } });
+  if (!poExists) {
+    await prisma.purchaseOrder.create({
+      data: {
+        tenantId: tenant.id, projectId: project.id, poNo: "PO-0001",
+        status: "received", totalPaise: 24_500_000_00n,
+        promisedDate: new Date("2026-08-15"), receivedDate: new Date("2026-08-14"), receivedInFull: true,
+      },
+    });
+  }
+
+  // Compliance: statutory filings
+  const filingCount = await prisma.statutoryFiling.count({ where: { tenantId: tenant.id } });
+  if (filingCount === 0) {
+    await prisma.statutoryFiling.createMany({
+      data: [
+        { tenantId: tenant.id, kind: "gst", period: "2026-08", dueOn: new Date("2026-09-11"), status: "filed", ownerRole: "finance_manager", filedAt: new Date("2026-09-10") },
+        { tenantId: tenant.id, kind: "tds", period: "2026-08", dueOn: new Date("2026-09-07"), status: "open", ownerRole: "finance_manager" },
+        { tenantId: tenant.id, kind: "pf", period: "2026-08", dueOn: new Date("2026-09-15"), status: "open", ownerRole: "hr_manager" },
+      ],
+    });
+  }
 }
 
 main()

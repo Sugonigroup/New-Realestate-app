@@ -39,14 +39,5 @@ curl -sf "http://localhost:8080/v1/authz/check?permission=crm.lead.read" -H "x-t
 curl -s "http://localhost:8080/v1/authz/check?permission=bad" -H "x-tenant-id: $TENANT_ID" | grep -q "problem+json\|permission must" && echo "  rfc7807 OK"
 kill $API_PID 2>/dev/null
 
-echo "── 7. Login E2E (password → JWT) ──"
-node --input-type=module -e "
-const { verifyToken } = await import('@nestjs/jwt').catch(() => ({ verifyToken: null })) ?? {};
-" 2>/dev/null || true
-node -e "
-const { scryptSync, randomBytes } = require('crypto');
-console.log('  login flow covered by unit tests (auth.service); live check = health+authz above');
-"
-
 echo "── ALL DB VERIFICATIONS PASSED ──"
 docker rm -f buildos-verify >/dev/null
