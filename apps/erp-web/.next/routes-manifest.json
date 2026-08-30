@@ -70,6 +70,12 @@
       "namedRegex": "^/admin/roles(?:/)?$"
     },
     {
+      "page": "/ai",
+      "regex": "^/ai(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ai(?:/)?$"
+    },
+    {
       "page": "/compliance/calendar",
       "regex": "^/compliance/calendar(?:/)?$",
       "routeKeys": {},

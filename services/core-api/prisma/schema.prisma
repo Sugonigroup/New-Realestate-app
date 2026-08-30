@@ -915,3 +915,182 @@ model Booking {
   @@index([tenantId, unitId])
   @@map("bookings")
 }
+
+// ── Marketing (Phase 5, 01 §M4) ─────────────────────────────────────────────
+
+model Campaign {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  projectId String?  @map("project_id") @db.Uuid
+  name      String
+  channel   String // meta|google|portal|offline|referral
+  status    String   @default("active") // active|paused|completed
+  spendPaise BigInt  @default(0) @map("spend_paise")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, status])
+  @@map("campaigns")
+}
+
+model CampaignSpend {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  campaignId String   @map("campaign_id") @db.Uuid
+  date       DateTime @map("date")
+  spendPaise BigInt   @map("spend_paise")
+  leads      Int      @default(0)
+
+  @@index([tenantId, campaignId])
+  @@map("campaign_spend")
+}
+
+// ── HR (Phase 4 WP-4F/4G/4H, 01 §M9) ────────────────────────────────────────
+
+model Employee {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  phone         String
+  role          String // site_engineer|sales_executive|…|labour
+  stateCode     String   @map("state_code")
+  basicMonthlyPaise BigInt @map("basic_monthly_paise")
+  hraMonthlyPaise   BigInt @default(0) @map("hra_monthly_paise")
+  specialMonthlyPaise BigInt @default(0) @map("special_monthly_paise")
+  contractorId  String?  @map("contractor_id")
+  status        String   @default("active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@map("employees")
+}
+
+model AttendanceRecord {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  employeeId String  @map("employee_id") @db.Uuid
+  date      DateTime @map("date")
+  checkIn   DateTime @map("check_in")
+  geoLat    Decimal? @map("geo_lat") @db.Decimal(10, 7)
+  geoLng    Decimal? @map("geo_lng") @db.Decimal(10, 7)
+  status    String   @default("present") // present|absent|leave|anomaly
+  anomalies Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, employeeId, date])
+  @@index([tenantId, date])
+  @@map("attendance_records")
+}
+
+model PayrollRun {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  period     String // 2026-09
+  stateCode  String   @map("state_code")
+  status     String   @default("draft") // draft|approved|disbursed
+  totals     Json
+  initiatedBy String  @map("initiated_by") @db.Uuid
+  approvedBy String?  @map("approved_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, period, stateCode])
+  @@map("payroll_runs")
+}
+
+model Contractor {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  code          String
+  name          String
+  clraExpiry    DateTime? @map("clra_expiry")
+  status        String    @default("active") // active|suspended|blacklisted
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("contractors")
+}
+
+// ── Procurement chain (Phase 3, 01 §M6) ─────────────────────────────────────
+
+model PurchaseOrder {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  contractorId  String?  @map("contractor_id")
+  poNo          String   @map("po_no")
+  status        String   @default("open") // open|partial|received|cancelled
+  totalPaise    BigInt   @default(0) @map("total_paise")
+  promisedDate  DateTime? @map("promised_date")
+  receivedDate  DateTime? @map("received_date")
+  receivedInFull Boolean @default(false) @map("received_in_full")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, poNo])
+  @@index([tenantId, status])
+  @@map("purchase_orders")
+}
+
+model MaterialStock {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  projectId     String  @map("project_id") @db.Uuid
+  materialId    String  @map("material_id")
+  materialName  String  @map("material_name")
+  unit          String
+  stockQty      Decimal @map("stock_qty") @db.Decimal(18, 4)
+  avgDailyConsumption Decimal @map("avg_daily_consumption") @db.Decimal(18, 4)
+  inboundPoQty  Decimal @default(0) @map("inbound_po_qty") @db.Decimal(18, 4)
+  leadTimeDays  Int     @default(7) @map("lead_time_days")
+  safetyDays    Int     @default(3) @map("safety_days")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([tenantId, projectId, materialId])
+  @@map("material_stock")
+}
+
+// ── Compliance persistence (Phase 4) ────────────────────────────────────────
+
+model StatutoryFiling {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  kind      String // gst|tds|pf|esic|pt|rera_qpr|roc
+  period    String
+  dueOn     DateTime @map("due_on")
+  status    String   @default("open") // open|filed
+  ownerRole String   @map("owner_role")
+  filedAt   DateTime? @map("filed_at")
+
+  @@unique([tenantId, kind, period])
+  @@map("statutory_filings")
+}
+
+model QprFiling {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  stateCode   String   @map("state_code")
+  year        Int
+  period      String // Q1..Q4 | H1 | H2
+  state       String   @default("draft") // draft|in_review|approved|submitted|filed
+  payload     Json?
+  autofillPct Decimal  @default(0) @map("autofill_pct") @db.Decimal(5, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, projectId, year, period])
+  @@map("qpr_filings")
+}
+
+model DsarRequest {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  personRef  String   @map("person_ref")
+  kind       String // access|correction|erasure
+  state      String   @default("received") // received|in_progress|completed|partially_completed|rejected
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  @@index([tenantId, state])
+  @@map("dsar_requests")
+}
