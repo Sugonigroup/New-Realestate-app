@@ -1094,3 +1094,123 @@ model DsarRequest {
   @@index([tenantId, state])
   @@map("dsar_requests")
 }
+
+// ── General Ledger (P0, 05 Finance/Accounting) ──────────────────────────────
+
+model Account {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  code      String // e.g. "1000-ASSETS", "2000-LIAB", "4000-REVENUE"
+  name      String
+  type      String // asset|liability|equity|revenue|expense
+  parentCode String? @map("parent_code")
+  isPostable Boolean @default(true) @map("is_postable") // parent accounts are headers only
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, code])
+  @@map("gl_accounts")
+}
+
+model FiscalPeriod {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  period   String // 2026-09
+  start    DateTime @map("start_date")
+  end      DateTime @map("end_date")
+  status   String @default("open") // open|soft_closed|hard_closed
+  closedBy String? @map("closed_by") @db.Uuid
+
+  @@index([tenantId, status])
+
+  @@unique([tenantId, period])
+  @@map("fiscal_periods")
+}
+
+model Journal {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  voucherNo   String   @map("voucher_no")
+  type        String // journal|sales|purchase|receipt|payment|contra
+  date        DateTime
+  narration   String?
+  status      String   @default("draft") // draft|pending_approval|posted|reversed
+  reversedBy  String?  @map("reversed_by") @db.Uuid
+  reversalOf  String?  @map("reversal_of") @db.Uuid
+  postedBy    String?  @map("posted_by") @db.Uuid
+  postedAt    DateTime? @map("posted_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  lines JournalLine[]
+
+  @@unique([tenantId, voucherNo])
+  @@index([tenantId, status])
+  @@map("gl_journals")
+}
+
+model JournalLine {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  journalId    String  @map("journal_id") @db.Uuid
+  accountCode  String  @map("account_code")
+  debitPaise   BigInt  @map("debit_paise")
+  creditPaise  BigInt  @map("credit_paise")
+  costCenter   String? @map("cost_center")
+  description  String?
+
+  journal Journal @relation(fields: [journalId], references: [id])
+
+  @@index([journalId])
+  @@index([accountCode])
+  @@map("gl_journal_lines")
+}
+
+model VendorInvoice {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  projectId      String?  @map("project_id") @db.Uuid
+  vendorId       String   @map("vendor_id")
+  invoiceNo      String   @map("invoice_no")
+  invoiceDate    DateTime @map("invoice_date")
+  amountPaise    BigInt   @map("amount_paise")
+  gstAmountPaise BigInt   @default(0) @map("gst_amount_paise")
+  tdsBps         Int      @default(0) @map("tds_bps")
+  status         String   @default("pending") // pending|3way_matched|approved|paid|rejected
+  matchResult    Json?    @map("match_result")
+  glJournalId    String?  @map("gl_journal_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, vendorId, invoiceNo])
+  @@index([tenantId, status])
+  @@map("vendor_invoices")
+}
+
+model BankAccount {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  accountNo   String   @map("account_no")
+  bankName    String   @map("bank_name")
+  ifsc        String
+  isEscrow    Boolean  @default(false) @map("is_escrow")
+  balancePaise BigInt  @default(0) @map("balance_paise")
+
+  @@unique([tenantId, accountNo])
+  @@map("bank_accounts")
+}
+
+model BankTransaction {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  bankAccountId  String   @map("bank_account_id") @db.Uuid
+  date           DateTime
+  amountPaise    BigInt   @map("amount_paise") // signed: +ve credit, -ve debit
+  narration      String
+  utr            String?  @map("utr")
+  matched        Boolean  @default(false)
+  matchedType    String?  @map("matched_type") // receipt|payment|journal
+  matchedId      String?  @map("matched_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, utr])
+  @@index([tenantId, bankAccountId, matched])
+  @@map("bank_transactions")
+}
