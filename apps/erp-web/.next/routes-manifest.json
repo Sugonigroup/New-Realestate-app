@@ -76,6 +76,18 @@
       "namedRegex": "^/ai(?:/)?$"
     },
     {
+      "page": "/assets",
+      "regex": "^/assets(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/assets(?:/)?$"
+    },
+    {
+      "page": "/budgeting",
+      "regex": "^/budgeting(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/budgeting(?:/)?$"
+    },
+    {
       "page": "/compliance/calendar",
       "regex": "^/compliance/calendar(?:/)?$",
       "routeKeys": {},
@@ -86,6 +98,12 @@
       "regex": "^/compliance/rera(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/compliance/rera(?:/)?$"
+    },
+    {
+      "page": "/contracts",
+      "regex": "^/contracts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/contracts(?:/)?$"
     },
     {
       "page": "/crm",
@@ -116,6 +134,18 @@
       "regex": "^/login(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/ops-support/risks",
+      "regex": "^/ops\\-support/risks(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ops\\-support/risks(?:/)?$"
+    },
+    {
+      "page": "/procurement/prs",
+      "regex": "^/procurement/prs(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement/prs(?:/)?$"
     },
     {
       "page": "/procurement/ra-bills",
