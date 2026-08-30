@@ -59,3 +59,24 @@ End-to-end planning package for **BuildOS — an AI-operated Construction ERP**:
 ### How to execute this plan
 
 `06-execution-plan.md` defines the sequence and dependencies. Each file in `phases/` is written as a **standalone work order** that can be handed to a coding agent (or parallel agents) without other context: it contains scope, file-level task breakdown, interfaces to build against, acceptance criteria, and verification steps. The deep-dive docs (07–12) are the micro-level specification the work orders reference: 09 into Phase 0 (approval engine + matrices), 08 into every phase's dashboard packages, 10 into Phases 1/3/5, 11 into Phase 3, 12 into Phase 4, and 07 is the cross-phase operating model (task envelopes, checklists, exception queues) that all work orders must honor.
+
+---
+
+## Implementation status (live)
+
+The application is being built in this repository per the plan above. **253 tests green · typecheck clean · 3 apps build.**
+
+| Roadmap phase | Status | Evidence |
+|---|---|---|
+| 0 Foundations (monorepo, tenancy+RLS, auth/MFA/RBAC, workflow, docs, notify) | ✅ | commits `a67a964`…`8c8fdc8`; RLS cross-tenant probe passed on live Postgres 16 |
+| 1 CRM + Sales (ingestion/dedup/routing, journeys+scoring, pricing+schedule, bookings+cancellation, partners+commissions) | ✅ | `a88bda8`, `5a1df40`, `3e6d673`, `1e605d9`, `c079626` |
+| 2 Finance (demand engine, receipts+recon, escrow 70% rule, customer portal, Tally builder) | ✅ | `c8c4dbf`, `76fea90`, `1cdad96` |
+| 3 Construction (CPM+golden network, EVM, certification gate, NCR/HSE, drawings) | ✅ | `0bd8295`, `9d57738` |
+| 4 RERA compliance (state profiles, QPR engine, statutory calendar, DSAR) + HR/payroll (PF/ESIC/PT/TDS golden tests, incentives, attendance) | ✅ | `128ec5b`, `87a053a` |
+| 5 Marketing attribution + KPI framework + board packs | ✅ | `4f70f84` |
+| 6 AI operating layer (policy engine L0–L5, 12-agent registry, gateway, runtime, RAG, all 12 agent cores) | ✅ | `b6679f9`, `22d23df`, `2fe95a4` |
+| 7 Wiring (event dispatcher → agents) | ✅ | `f9b8c80` |
+| 8 Predictive backtesting harness (promotion gates) | ✅ | this commit |
+| 9 Hardening (staging apply, VAPT, load) | ⬜ | blocked on AWS credentials / Docker daemon recovery |
+
+Remaining externally-blocked items (marked `UNKNOWN — REQUIRES CONFIRMATION` where relevant): staging Terraform apply (AWS account), live provider credentials (Razorpay/WhatsApp/eSign), eval golden sets from real tenant documents, and the full DB re-verification E2E (local Docker daemon wedged; RLS probe evidence already captured pre-wedge).
