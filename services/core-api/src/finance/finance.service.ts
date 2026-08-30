@@ -91,6 +91,47 @@ export class FinanceService {
     return { created, skipped };
   }
 
+  /** Endpoint convenience: load the booking's immutable snapshot and generate. */
+  async generateFromBooking(tenantId: string, bookingId: string, certifiedMilestones?: string[]): Promise<ReturnType<FinanceService["generateDemandsForBooking"]>> {
+    const booking = await this.prisma.booking.findFirst({ where: { id: bookingId, tenantId } });
+    if (!booking) throw new NotFoundException("booking not found");
+    const schedule = (booking.scheduleSnapshot ?? []) as unknown as Array<{
+      seq: number; key: string; label: string; amountPaise: string; dueDate: Date | null;
+      trigger: { kind: "on_booking" | "days_from_booking" | "construction_milestone"; days?: number; milestoneKey?: string };
+    }>;
+    if (schedule.length === 0) throw new RangeError("booking has no schedule snapshot");
+    return this.generateDemandsForBooking({
+      tenantId,
+      bookingId,
+      entityId: booking.projectId ?? booking.unitId, // number series keyed per project (gapless)
+      schedule: schedule as unknown as Parameters<FinanceService["generateDemandsForBooking"]>[0]["schedule"],
+      certifiedMilestones,
+    });
+  }
+
+  async listDemands(tenantId: string, status?: string): Promise<unknown[]> {
+    return this.prisma.demand.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      orderBy: [{ bookingId: "asc" }, { seq: "asc" }],
+      take: 200,
+    });
+  }
+
+  async listLedger(tenantId: string, unitId: string): Promise<unknown[]> {
+    return this.prisma.customerLedgerEntry.findMany({
+      where: { tenantId, unitId },
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  async listReceipts(tenantId: string, bookingId?: string): Promise<unknown[]> {
+    return this.prisma.receipt.findMany({
+      where: { tenantId, ...(bookingId ? { bookingId } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }
+
   /** Apply a receipt: instrument validation (BR-K), FIFO allocation, ledger, event. */
   async applyReceipt(input: {
     tenantId: string;

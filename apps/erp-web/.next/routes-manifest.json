@@ -48,6 +48,24 @@
       "namedRegex": "^/crm(?:/)?$"
     },
     {
+      "page": "/finance/collections",
+      "regex": "^/finance/collections(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/collections(?:/)?$"
+    },
+    {
+      "page": "/finance/demands",
+      "regex": "^/finance/demands(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/demands(?:/)?$"
+    },
+    {
+      "page": "/finance/escrow",
+      "regex": "^/finance/escrow(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/escrow(?:/)?$"
+    },
+    {
       "page": "/login",
       "regex": "^/login(?:/)?$",
       "routeKeys": {},

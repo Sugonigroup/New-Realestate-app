@@ -1,10 +1,13 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/crm/leads/[id]/page": "app/crm/leads/[id]/page.js",
-  "/sales/bookings/new/page": "app/sales/bookings/new/page.js",
-  "/sales/inventory/page": "app/sales/inventory/page.js",
-  "/page": "app/page.js",
+  "/finance/escrow/page": "app/finance/escrow/page.js",
+  "/finance/demands/page": "app/finance/demands/page.js",
+  "/finance/collections/page": "app/finance/collections/page.js",
   "/crm/page": "app/crm/page.js",
   "/login/page": "app/login/page.js",
-  "/sales/bookings/page": "app/sales/bookings/page.js"
+  "/sales/bookings/new/page": "app/sales/bookings/new/page.js",
+  "/crm/leads/[id]/page": "app/crm/leads/[id]/page.js",
+  "/sales/bookings/page": "app/sales/bookings/page.js",
+  "/sales/inventory/page": "app/sales/inventory/page.js",
+  "/page": "app/page.js"
 }

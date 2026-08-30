@@ -1,10 +1,13 @@
 {
   "/_not-found/page": "/_not-found",
-  "/crm/leads/[id]/page": "/crm/leads/[id]",
-  "/sales/bookings/new/page": "/sales/bookings/new",
-  "/sales/inventory/page": "/sales/inventory",
-  "/page": "/",
+  "/finance/escrow/page": "/finance/escrow",
+  "/finance/demands/page": "/finance/demands",
+  "/finance/collections/page": "/finance/collections",
   "/crm/page": "/crm",
   "/login/page": "/login",
-  "/sales/bookings/page": "/sales/bookings"
+  "/sales/bookings/new/page": "/sales/bookings/new",
+  "/crm/leads/[id]/page": "/crm/leads/[id]",
+  "/sales/bookings/page": "/sales/bookings",
+  "/sales/inventory/page": "/sales/inventory",
+  "/page": "/"
 }
