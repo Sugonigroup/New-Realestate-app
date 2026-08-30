@@ -14,6 +14,7 @@ import { RequestContextModule } from "./common/request-context.module.js";
 import { RequestContextMiddleware } from "./common/request-context.middleware.js";
 import { TenantContextMiddleware } from "./common/tenant-context.middleware.js";
 import { ProblemJsonExceptionFilter } from "./common/problem-exception.filter.js";
+import { SecurityHeadersMiddleware, BodyLimitMiddleware } from "./common/security.middleware.js";
 import { AppController } from "./app.controller.js";
 
 @Module({
@@ -23,7 +24,9 @@ import { AppController } from "./app.controller.js";
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    // Order matters: correlation first, then tenant resolution into the request context.
-    consumer.apply(RequestContextMiddleware, TenantContextMiddleware).forRoutes("*");
+    // Order matters: headers/body-limit → correlation → tenant resolution.
+    consumer
+      .apply(SecurityHeadersMiddleware, BodyLimitMiddleware, RequestContextMiddleware, TenantContextMiddleware)
+      .forRoutes("*");
   }
 }
