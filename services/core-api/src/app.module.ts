@@ -11,6 +11,7 @@ import { CrmModule } from "./crm/crm.module.js";
 import { SalesModule } from "./sales/sales.module.js";
 import { PortalModule } from "./portal/portal.module.js";
 import { FinanceModule } from "./finance/finance.module.js";
+import { ProjectsModule } from "./projects/projects.module.js";
 import { RequestContextModule } from "./common/request-context.module.js";
 import { RequestContextMiddleware } from "./common/request-context.middleware.js";
 import { TenantContextMiddleware } from "./common/tenant-context.middleware.js";
@@ -19,7 +20,7 @@ import { SecurityHeadersMiddleware, BodyLimitMiddleware } from "./common/securit
 import { AppController } from "./app.controller.js";
 
 @Module({
-  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule],
+  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule],
   controllers: [AppController],
   providers: [{ provide: APP_FILTER, useClass: ProblemJsonExceptionFilter }],
 })

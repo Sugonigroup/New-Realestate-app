@@ -26,6 +26,22 @@
         "nxtPid": "nxtPid"
       },
       "namedRegex": "^/crm/leads/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/projects/[id]",
+      "regex": "^/projects/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/projects/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/projects/[id]/certify",
+      "regex": "^/projects/([^/]+?)/certify(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/projects/(?<nxtPid>[^/]+?)/certify(?:/)?$"
     }
   ],
   "staticRoutes": [
@@ -70,6 +86,12 @@
       "regex": "^/login(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/procurement/ra-bills",
+      "regex": "^/procurement/ra\\-bills(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement/ra\\-bills(?:/)?$"
     },
     {
       "page": "/sales/bookings",

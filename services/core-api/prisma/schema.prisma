@@ -800,6 +800,72 @@ model RagChunk {
   @@map("rag_chunks")
 }
 
+// ── Construction (Phase 3 U3, 01 §M5–M6) ────────────────────────────────────
+
+model ConstructionActivity {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  code         String
+  name         String
+  durationDays Int      @map("duration_days")
+  deps         String[] @default([])
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, projectId, code])
+  @@map("construction_activities")
+}
+
+model Milestone {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  key         String
+  label       String
+  state       String    @default("pending") // pending|certified
+  certifiedAt DateTime? @map("certified_at")
+  evidence    Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, projectId, key])
+  @@map("milestones")
+}
+
+model ApprovalDoc {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  kind      String // sanctioned_plan|fire_noc|environmental|cc|oc|lift_licence|…
+  ref       String
+  expiresAt DateTime? @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, projectId])
+  @@map("approval_docs")
+}
+
+model RaBill {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  projectId           String   @map("project_id") @db.Uuid
+  contractorId        String   @map("contractor_id")
+  billNo              String   @map("bill_no")
+  billQty             Decimal  @map("bill_qty") @db.Decimal(18, 4)
+  billRatePaise       BigInt   @map("bill_rate_paise")
+  mbQty               Decimal  @map("mb_qty") @db.Decimal(18, 4)
+  boqQty              Decimal  @map("boq_qty") @db.Decimal(18, 4)
+  boqRatePaise        BigInt   @map("boq_rate_paise")
+  cumulativeBilledQty Decimal  @map("cumulative_billed_qty") @db.Decimal(18, 4)
+  soeQty              Decimal  @map("soe_qty") @db.Decimal(18, 4)
+  status              String   @default("submitted") // submitted|verified|approved|rejected
+  anomalies           Json?
+  recommendation      String?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, billNo])
+  @@map("ra_bills")
+}
+
 model Hold {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
