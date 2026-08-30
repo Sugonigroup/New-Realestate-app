@@ -1354,6 +1354,92 @@ model ForecastScenario {
   @@map("forecast_scenarios")
 }
 
+// ── Assets / EAM & Maintenance CMMS P2 ──────────────────────────────────────
+
+model Asset {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  assetTag         String    @map("asset_tag")
+  name             String
+  category         String    // heavy_machinery|vehicle|office_equipment|tool|it
+  projectId        String?   @map("project_id") @db.Uuid
+  location         String?   // site location / warehouse / floor
+  status           String    @default("commissioned") // commissioned|in_service|in_maintenance|decommissioned
+  purchaseDate     DateTime  @map("purchase_date")
+  purchaseValPaise BigInt    @map("purchase_val_paise")
+  salvageValPaise  BigInt    @default(0) @map("salvage_val_paise")
+  usefulLifeMonths Int       @map("useful_life_months")
+  currentMeterVal  Decimal   @default(0) @map("current_meter_val") @db.Decimal(18, 4)
+  meterUnit        String?   @map("meter_unit") // hours|km|cycles
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  plans      MaintenancePlan[]
+  workOrders WorkOrder[]
+
+  @@unique([tenantId, assetTag])
+  @@index([tenantId, status])
+  @@map("assets")
+}
+
+model MaintenancePlan {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  assetId       String    @map("asset_id") @db.Uuid
+  title         String
+  intervalDays  Int?      @map("interval_days") // time-based PM
+  meterInterval Decimal?  @map("meter_interval") @db.Decimal(18, 4) // usage-based PM
+  lastRunAt     DateTime? @map("last_run_at")
+  lastRunMeter  Decimal?  @map("last_run_meter") @db.Decimal(18, 4)
+  status        String    @default("active") // active|paused
+
+  asset      Asset       @relation(fields: [assetId], references: [id])
+  workOrders WorkOrder[]
+
+  @@index([tenantId, assetId])
+  @@map("maintenance_plans")
+}
+
+model WorkOrder {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  woNo         String    @map("wo_no")
+  assetId      String    @map("asset_id") @db.Uuid
+  planId       String?   @map("plan_id") @db.Uuid
+  type         String    // preventive|corrective|breakdown|inspection
+  description  String
+  priority     String    @default("medium") // low|medium|high|critical
+  status       String    @default("open") // open|in_progress|completed|cancelled
+  assignedTo   String?   @map("assigned_to")
+  breakdownAt  DateTime? @map("breakdown_at")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  costPaise    BigInt    @default(0) @map("cost_paise")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  asset Asset            @relation(fields: [assetId], references: [id])
+  plan  MaintenancePlan? @relation(fields: [planId], references: [id])
+  spares SpareUsage[]
+
+  @@unique([tenantId, woNo])
+  @@index([tenantId, assetId])
+  @@index([tenantId, status])
+  @@map("work_orders")
+}
+
+model SpareUsage {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  workOrderId String  @map("work_order_id") @db.Uuid
+  materialId  String  @map("material_id")
+  qty         Decimal @db.Decimal(18, 4)
+  unitCostPaise BigInt @map("unit_cost_paise")
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
+
+  @@index([tenantId, workOrderId])
+  @@map("spare_usages")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {
