@@ -845,24 +845,36 @@ model ApprovalDoc {
 }
 
 model RaBill {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId            String   @map("tenant_id") @db.Uuid
-  projectId           String   @map("project_id") @db.Uuid
-  contractorId        String   @map("contractor_id")
-  billNo              String   @map("bill_no")
-  billQty             Decimal  @map("bill_qty") @db.Decimal(18, 4)
-  billRatePaise       BigInt   @map("bill_rate_paise")
-  mbQty               Decimal  @map("mb_qty") @db.Decimal(18, 4)
-  boqQty              Decimal  @map("boq_qty") @db.Decimal(18, 4)
-  boqRatePaise        BigInt   @map("boq_rate_paise")
-  cumulativeBilledQty Decimal  @map("cumulative_billed_qty") @db.Decimal(18, 4)
-  soeQty              Decimal  @map("soe_qty") @db.Decimal(18, 4)
-  status              String   @default("submitted") // submitted|verified|approved|rejected
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  projectId           String    @map("project_id") @db.Uuid
+  contractorId        String    @map("contractor_id")
+  workOrderId         String?   @map("work_order_id") @db.Uuid
+  billNo              String    @map("bill_no")
+  period              String?   // e.g. "2026-08"
+  billQty             Decimal   @default(0) @map("bill_qty") @db.Decimal(18, 4)
+  billRatePaise       BigInt    @default(0) @map("bill_rate_paise")
+  mbQty               Decimal   @default(0) @map("mb_qty") @db.Decimal(18, 4)
+  boqQty              Decimal   @default(0) @map("boq_qty") @db.Decimal(18, 4)
+  boqRatePaise        BigInt    @default(0) @map("boq_rate_paise")
+  cumulativeBilledQty Decimal   @default(0) @map("cumulative_billed_qty") @db.Decimal(18, 4)
+  soeQty              Decimal   @default(0) @map("soe_qty") @db.Decimal(18, 4)
+  grossValPaise       BigInt    @default(0) @map("gross_val_paise")
+  retentionPaise      BigInt    @default(0) @map("retention_paise")
+  advanceRecPaise     BigInt    @default(0) @map("advance_rec_paise")
+  tdsPaise            BigInt    @default(0) @map("tds_paise") // 194C / 194J
+  netPayablePaise     BigInt    @default(0) @map("net_payable_paise")
+  status              String    @default("submitted") // submitted|verified|certified|approved|paid|rejected
+  certifiedBy         String?   @map("certified_by")
+  certifiedAt         DateTime? @map("certified_at")
   anomalies           Json?
   recommendation      String?
-  createdAt           DateTime @default(now()) @map("created_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  workOrder SubcontractorWorkOrder? @relation(fields: [workOrderId], references: [id])
 
   @@unique([tenantId, billNo])
+  @@index([tenantId, status])
   @@map("ra_bills")
 }
 
@@ -1668,4 +1680,124 @@ model BankTransaction {
   @@unique([tenantId, utr])
   @@index([tenantId, bankAccountId, matched])
   @@map("bank_transactions")
+}
+
+// ── Subcontractor Management & RA Bills SUB-01 ──────────────────────────────
+
+model SubcontractorWorkOrder {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  contractorId String   @map("contractor_id") @db.Uuid
+  woNo         String   @map("wo_no")
+  title        String
+  totalPaise   BigInt   @map("total_paise")
+  retentionPct Decimal  @default(5.0) @map("retention_pct") @db.Decimal(5, 2)
+  status       String   @default("active") // active|completed|terminated
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  raBills RaBill[]
+
+  @@unique([tenantId, woNo])
+  @@index([tenantId, contractorId])
+  @@map("subcontractor_work_orders")
+}
+
+// ── Quality Management & Pour Cards QMS-01 ──────────────────────────────────
+
+model PourCard {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  pourNo          String    @map("pour_no")
+  locationElement String    @map("location_element") // e.g. "Tower A - 5th Slab Pour 2"
+  concreteGrade   String    @map("concrete_grade") // M30, M35, M40, M50
+  targetVolumeCum Decimal   @map("target_volume_cum") @db.Decimal(18, 4)
+  rebarCleared    Boolean   @default(false) @map("rebar_cleared")
+  shutterCleared  Boolean   @default(false) @map("shutter_cleared")
+  mepCleared      Boolean   @default(false) @map("mep_cleared")
+  qcCleared       Boolean   @default(false) @map("qc_cleared")
+  status          String    @default("pending") // pending|approved|poured|rejected
+  approvedBy      String?   @map("approved_by")
+  pouredAt        DateTime? @map("poured_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  cubeTests ConcreteCubeTest[]
+
+  @@unique([tenantId, pourNo])
+  @@index([tenantId, status])
+  @@map("pour_cards")
+}
+
+model ConcreteCubeTest {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  pourCardId     String    @map("pour_card_id") @db.Uuid
+  sampleNo       String    @map("sample_no")
+  testingAgeDays Int       @map("testing_age_days") // 7 or 28 days
+  targetNmm2     Decimal   @map("target_nmm2") @db.Decimal(10, 2)
+  actualNmm2     Decimal   @map("actual_nmm2") @db.Decimal(10, 2)
+  isPassed       Boolean   @map("is_passed")
+  testedAt       DateTime  @map("tested_at")
+
+  pourCard PourCard @relation(fields: [pourCardId], references: [id])
+
+  @@index([tenantId, pourCardId])
+  @@map("concrete_cube_tests")
+}
+
+model NonConformanceReport {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  ncrNo       String    @map("ncr_no")
+  projectId   String    @map("project_id") @db.Uuid
+  vendorId    String?   @map("vendor_id") @db.Uuid
+  severity    String    @default("medium") // minor|medium|major|critical
+  description String
+  rootCause   String?   @map("root_cause")
+  status      String    @default("open") // open|action_proposed|resolved|closed
+  resolvedAt  DateTime? @map("resolved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, ncrNo])
+  @@index([tenantId, status])
+  @@map("non_conformance_reports")
+}
+
+// ── HSE & Permit to Work HSE-01 ─────────────────────────────────────────────
+
+model PermitToWork {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  permitNo       String    @map("permit_no")
+  projectId      String    @map("project_id") @db.Uuid
+  workType       String    // hot_work|height_work|excavation|confined_space|electrical
+  location       String
+  validFrom      DateTime  @map("valid_from")
+  validTo        DateTime  @map("valid_to")
+  safetyOfficer  String    @map("safety_officer")
+  status         String    @default("requested") // requested|approved|active|closed|revoked
+  approvedBy     String?   @map("approved_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, permitNo])
+  @@index([tenantId, status])
+  @@map("permits_to_work")
+}
+
+model SafetyIncident {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  incidentNo  String    @map("incident_no")
+  projectId   String    @map("project_id") @db.Uuid
+  severity    Int       // 1 (near miss) to 5 (fatality/major)
+  location    String
+  description String
+  status      String    @default("open") // open|investigating|mitigated|closed
+  reportedAt  DateTime  @map("reported_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, incidentNo])
+  @@index([tenantId, status])
+  @@map("safety_incidents")
 }

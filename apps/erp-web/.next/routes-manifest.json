@@ -188,6 +188,12 @@
       "regex": "^/sales/inventory(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/sales/inventory(?:/)?$"
+    },
+    {
+      "page": "/siteops",
+      "regex": "^/siteops(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/siteops(?:/)?$"
     }
   ],
   "dataRoutes": [],
