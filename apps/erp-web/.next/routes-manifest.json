@@ -70,6 +70,12 @@
       "namedRegex": "^/admin/roles(?:/)?$"
     },
     {
+      "page": "/admin/users",
+      "regex": "^/admin/users(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/users(?:/)?$"
+    },
+    {
       "page": "/ai",
       "regex": "^/ai(?:/)?$",
       "routeKeys": {},
@@ -130,10 +136,22 @@
       "namedRegex": "^/finance/escrow(?:/)?$"
     },
     {
+      "page": "/hr/employees",
+      "regex": "^/hr/employees(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/hr/employees(?:/)?$"
+    },
+    {
       "page": "/login",
       "regex": "^/login(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/marketing/campaigns",
+      "regex": "^/marketing/campaigns(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/marketing/campaigns(?:/)?$"
     },
     {
       "page": "/ops-support/risks",
