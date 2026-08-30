@@ -697,6 +697,109 @@ model EscrowWithdrawal {
   @@map("escrow_withdrawals")
 }
 
+// ── AI operating layer (Phase 6, 05 §2 / 07) ────────────────────────────────
+
+model AgentRun {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  agentCode    String    @map("agent_code")
+  triggerType  String    @map("trigger_type") // event|cron|manual
+  triggerEventId String? @map("trigger_event_id")
+  inputRef     Json?     @map("input_ref")
+  userContext  Json?     @map("user_context")
+  model        String?
+  promptVersion String?  @map("prompt_version")
+  startedAt    DateTime  @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+  status       String    // running|completed|failed|suspended
+  tokensIn     Int       @default(0) @map("tokens_in")
+  tokensOut    Int       @default(0) @map("tokens_out")
+  costPaise    BigInt    @default(0) @map("cost_paise")
+  traceId      String    @map("trace_id")
+
+  decisions    AiDecision[]
+
+  @@index([tenantId, agentCode, startedAt])
+  @@map("agent_runs")
+}
+
+model AiDecision {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  runId         String   @map("run_id") @db.Uuid
+  observation   Json
+  analysis      Json?
+  risk          Json
+  recommendation Json
+  actionType    String   @map("action_type")
+  actionPayload Json     @map("action_payload")
+  confidence    Decimal  @map("confidence") @db.Decimal(4, 3)
+  evidence      Json
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  run     AgentRun   @relation(fields: [runId], references: [id])
+  actions AiAction[]
+
+  @@index([tenantId, createdAt])
+  @@map("ai_decisions")
+}
+
+model AiAction {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  decisionId       String    @map("decision_id") @db.Uuid
+  toolName         String    @map("tool_name")
+  toolArgs         Json      @map("tool_args")
+  autonomyLevel    Int       @map("autonomy_level")
+  policyVerdict    Json      @map("policy_verdict")
+  approvalId       String?   @map("approval_id") @db.Uuid
+  executionStatus  String    @map("execution_status") // pending_approval|executed|denied|drafted
+  executionResult  Json?     @map("execution_result")
+  idempotencyKey   String    @map("idempotency_key")
+  executedAt       DateTime? @map("executed_at")
+
+  decision AiDecision @relation(fields: [decisionId], references: [id])
+
+  @@unique([idempotencyKey])
+  @@index([tenantId, executionStatus])
+  @@map("ai_actions")
+}
+
+// ── Knowledge / RAG (Phase 6, 15) ───────────────────────────────────────────
+
+model RagDocument {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  projectId String?  @map("project_id") @db.Uuid
+  docClass  String   @map("doc_class")
+  title     String
+  version   Int      @default(1)
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chunks RagChunk[]
+
+  @@index([tenantId, projectId])
+  @@map("rag_documents")
+}
+
+model RagChunk {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  projectId   String?  @map("project_id") @db.Uuid
+  section     String?
+  chunkIndex  Int      @map("chunk_index")
+  content     String
+  embedding   Bytes // pgvector vector(1536) via SQL migration; byte-typed in client v1
+  contentHash String   @map("content_hash")
+
+  document RagDocument @relation(fields: [documentId], references: [id])
+
+  @@index([tenantId, projectId])
+  @@map("rag_chunks")
+}
+
 model Hold {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
