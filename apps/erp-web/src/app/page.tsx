@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { MoneyText, StatCard, filterNav, seededRolePermissions } from "@buildos/ui";
+import { MoneyText, StatCard, filterNav, seededRolePermissions, AuthProvider, parseJwtClaims } from "@buildos/ui";
 
 const CORE_API = process.env.CORE_API_URL ?? "http://localhost:8080";
 
@@ -21,10 +21,11 @@ export default async function DashboardPage() {
     // degraded: dashboard still renders with placeholder data
   }
 
-  const roleCodes = decodeRoles(token);
-  const nav = filterNav(roleCodes, seededRolePermissions());
+  const user = parseJwtClaims(token);
+  const nav = filterNav(user?.roles ?? [], seededRolePermissions());
 
   return (
+    <AuthProvider user={user}>
     <div className="flex min-h-screen">
       <aside
         className="w-56 shrink-0 border-r p-4"
@@ -64,17 +65,6 @@ export default async function DashboardPage() {
         </p>
       </main>
     </div>
+    </AuthProvider>
   );
-}
-
-/** WP-0D: role claims come from the verified session; presence-only decode for shell nav. */
-function decodeRoles(token?: string): string[] {
-  if (!token) return [];
-  try {
-    const [, payload] = token.split(".");
-    const json = JSON.parse(Buffer.from(payload!, "base64url").toString("utf8")) as { roles?: string[] };
-    return json.roles ?? [];
-  } catch {
-    return [];
-  }
 }
