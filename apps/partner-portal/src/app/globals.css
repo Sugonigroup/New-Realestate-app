@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "@buildos/ui/tokens.css";
+
+body {
+  background: var(--bo-bg);
+  color: var(--bo-text);
+  font-family: var(--bo-font);
+}

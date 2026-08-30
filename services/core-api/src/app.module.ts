@@ -10,6 +10,7 @@ import { DocumentsModule } from "./documents/documents.module.js";
 import { CrmModule } from "./crm/crm.module.js";
 import { SalesModule } from "./sales/sales.module.js";
 import { PortalModule } from "./portal/portal.module.js";
+import { AiModule } from "./ai/ai.module.js";
 import { FinanceModule } from "./finance/finance.module.js";
 import { ProjectsModule } from "./projects/projects.module.js";
 import { ComplianceModule } from "./compliance/compliance.module.js";
@@ -22,7 +23,7 @@ import { SecurityHeadersMiddleware, BodyLimitMiddleware } from "./common/securit
 import { AppController } from "./app.controller.js";
 
 @Module({
-  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule, ComplianceModule, AdminModule],
+  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule, ComplianceModule, AdminModule, AiModule],
   controllers: [AppController],
   providers: [{ provide: APP_FILTER, useClass: ProblemJsonExceptionFilter }],
 })
