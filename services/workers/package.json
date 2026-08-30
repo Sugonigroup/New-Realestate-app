@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@buildos/core-api": "workspace:*",
+    "@buildos/money-utils": "workspace:*",
     "@prisma/client": "^6.19.3"
   }
 }
