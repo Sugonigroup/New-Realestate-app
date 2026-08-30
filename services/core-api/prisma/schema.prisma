@@ -1682,6 +1682,66 @@ model BankTransaction {
   @@map("bank_transactions")
 }
 
+// ── Financial Adjustments, Aging & E-Invoice FIN-02 ──────────────────────────
+
+model CreditDebitNote {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  noteNo          String    @map("note_no")
+  type            String    // customer_credit|customer_debit|supplier_credit|supplier_debit
+  partyId         String    @map("party_id") // customer_id or vendor_id
+  refInvoiceNo    String    @map("ref_invoice_no")
+  amountPaise     BigInt    @map("amount_paise")
+  gstPaise        BigInt    @default(0) @map("gst_paise")
+  totalPaise      BigInt    @map("total_paise")
+  reason          String    // rate_difference|quantity_shortage|quality_discount|cancellation|other
+  glJournalId     String?   @map("gl_journal_id") @db.Uuid
+  status          String    @default("posted") // posted|cancelled
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, noteNo])
+  @@index([tenantId, partyId])
+  @@map("credit_debit_notes")
+}
+
+model ReceivableAgingSnapshot {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  unitId           String    @map("unit_id") @db.Uuid
+  bookingId        String    @map("booking_id") @db.Uuid
+  customerName     String    @map("customer_name")
+  totalOutstanding BigInt    @map("total_outstanding")
+  bucketCurrent    BigInt    @default(0) @map("bucket_current") // 0-30 days
+  bucket30to60     BigInt    @default(0) @map("bucket_30_60")   // 31-60 days
+  bucket60to90     BigInt    @default(0) @map("bucket_60_90")   // 61-90 days
+  bucket90Plus     BigInt    @default(0) @map("bucket_90_plus") // >90 days
+  dunningLevel     Int       @default(0) @map("dunning_level") // 0=none, 1=notice, 2=warning, 3=legal
+  asOfDate         DateTime  @map("as_of_date")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, asOfDate])
+  @@map("receivable_aging_snapshots")
+}
+
+model EInvoiceRecord {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  documentNo      String    @map("document_no") // invoice or credit note no
+  documentType    String    @map("document_type") // INV|CRN|DBN
+  irn             String    // 64-character hash
+  ackNo           BigInt    @map("ack_no")
+  ackDate         DateTime  @map("ack_date")
+  qrCodeData      String    @map("qr_code_data")
+  ewayBillNo      String?   @map("eway_bill_no")
+  ewayValidUntil  DateTime? @map("eway_valid_until")
+  status          String    @default("generated") // generated|cancelled
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, documentNo])
+  @@unique([tenantId, irn])
+  @@map("einvoice_records")
+}
+
 // ── Subcontractor Management & RA Bills SUB-01 ──────────────────────────────
 
 model SubcontractorWorkOrder {
