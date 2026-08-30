@@ -1742,6 +1742,88 @@ model EInvoiceRecord {
   @@map("einvoice_records")
 }
 
+// ── Land Acquisition & JDA Development LAND-01 ──────────────────────────────
+
+model LandParcel {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  parcelNo       String    @map("parcel_no")
+  surveyNo       String    @map("survey_no")
+  location       String
+  areaSqFt       Decimal   @map("area_sqft") @db.Decimal(18, 4)
+  purchaseValPaise BigInt  @map("purchase_val_paise")
+  titleStatus    String    @default("clear") // clear|encumbered|litigation
+  legalOpinionBy String?   @map("legal_opinion_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  jdas JointDevelopmentAgreement[]
+
+  @@unique([tenantId, parcelNo])
+  @@map("land_parcels")
+}
+
+model JointDevelopmentAgreement {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  jdaNo            String   @map("jda_no")
+  landParcelId     String   @map("land_parcel_id") @db.Uuid
+  landownerName    String   @map("landowner_name")
+  landownerSharePct Decimal @map("landowner_share_pct") @db.Decimal(5, 2)
+  developerSharePct Decimal @map("developer_share_pct") @db.Decimal(5, 2)
+  revenueSharePct  Decimal? @map("revenue_share_pct") @db.Decimal(5, 2)
+  areaShareSqFt    Decimal? @map("area_share_sqft") @db.Decimal(18, 4)
+  depositPaise     BigInt   @default(0) @map("deposit_paise")
+  status           String   @default("active") // active|completed|terminated
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  landParcel LandParcel @relation(fields: [landParcelId], references: [id])
+
+  @@unique([tenantId, jdaNo])
+  @@index([tenantId, landParcelId])
+  @@map("joint_development_agreements")
+}
+
+// ── RERA Compliance & Escrow Withdrawals RERA-01 ────────────────────────────
+
+model ReraCertificate {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  certNo       String    @map("cert_no")
+  projectId    String    @map("project_id") @db.Uuid
+  certType     String    // Form1_Architect|Form2_Engineer|Form3_CA
+  issuerName   String    @map("issuer_name")
+  issuerRegNo  String    @map("issuer_reg_no")
+  period       String    // e.g. "Q2_2026"
+  certifiedPct Decimal   @map("certified_pct") @db.Decimal(5, 2)
+  documentRef  String?   @map("document_ref")
+  issuedAt     DateTime  @map("issued_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, certNo])
+  @@index([tenantId, projectId])
+  @@map("rera_certificates")
+}
+
+model ReraEscrowWithdrawal {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  requestNo           String    @map("request_no")
+  projectId           String    @map("project_id") @db.Uuid
+  requestedPaise      BigInt    @map("requested_paise")
+  maxWithdrawablePaise BigInt   @map("max_withdrawable_paise")
+  form1ArchitectCertId String   @map("form1_architect_cert_id") @db.Uuid
+  form2EngineerCertId  String   @map("form2_engineer_cert_id") @db.Uuid
+  form3CaCertId        String   @map("form3_ca_cert_id") @db.Uuid
+  status              String    @default("requested") // requested|approved|withdrawn|rejected
+  approvedBy          String?   @map("approved_by")
+  withdrawnAt         DateTime? @map("withdrawn_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, requestNo])
+  @@index([tenantId, projectId])
+  @@map("rera_escrow_withdrawals")
+}
+
 // ── Subcontractor Management & RA Bills SUB-01 ──────────────────────────────
 
 model SubcontractorWorkOrder {

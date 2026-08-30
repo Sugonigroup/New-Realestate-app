@@ -19,6 +19,7 @@ import { BudgetingModule } from "./budgeting/budgeting.module.js";
 import { AssetsModule } from "./assets/assets.module.js";
 import { OpsSupportModule } from "./ops-support/ops-support.module.js";
 import { SiteOpsModule } from "./siteops/siteops.module.js";
+import { LandModule } from "./land/land.module.js";
 import { MarketingModule } from "./marketing/marketing.module.js";
 import { HrModule } from "./hr/hr.module.js";
 import { ComplianceModule } from "./compliance/compliance.module.js";
@@ -31,7 +32,7 @@ import { SecurityHeadersMiddleware, BodyLimitMiddleware } from "./common/securit
 import { AppController } from "./app.controller.js";
 
 @Module({
-  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule, ProcurementModule, ContractsModule, BudgetingModule, AssetsModule, OpsSupportModule, SiteOpsModule, ComplianceModule, AdminModule, AiModule, MarketingModule, HrModule],
+  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule, ProcurementModule, ContractsModule, BudgetingModule, AssetsModule, OpsSupportModule, SiteOpsModule, LandModule, ComplianceModule, AdminModule, AiModule, MarketingModule, HrModule],
   controllers: [AppController],
   providers: [{ provide: APP_FILTER, useClass: ProblemJsonExceptionFilter }],
 })
