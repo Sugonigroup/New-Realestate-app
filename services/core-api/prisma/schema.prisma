@@ -1440,6 +1440,70 @@ model SpareUsage {
   @@map("spare_usages")
 }
 
+// ── Operations Support: Risk, Service, Audit P3 ─────────────────────────────
+
+model RiskRegister {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  projectId    String?   @map("project_id") @db.Uuid
+  riskNo       String    @map("risk_no")
+  title        String
+  category     String    // financial|safety|compliance|schedule|quality|reputational
+  probability  Int       // 1 (low) to 5 (high)
+  impact       Int       // 1 (low) to 5 (high)
+  riskScore    Int       @map("risk_score") // probability * impact (1 to 25)
+  mitigationPlan String? @map("mitigation_plan")
+  ownerRole    String    @map("owner_role")
+  status       String    @default("open") // open|mitigated|realized|closed
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, riskNo])
+  @@index([tenantId, status])
+  @@map("risk_registers")
+}
+
+model CustomerTicket {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  ticketNo     String    @map("ticket_no")
+  unitId       String?   @map("unit_id") @db.Uuid
+  customerName String    @map("customer_name")
+  customerPhone String   @map("customer_phone")
+  category     String    // leakage|electrical|plumbing|possession_delay|billing|other
+  description  String
+  priority     String    @default("medium") // low|medium|high|critical
+  dueOn        DateTime  @map("due_on") // SLA target
+  status       String    @default("open") // open|assigned|in_progress|resolved|closed
+  assignedTo   String?   @map("assigned_to")
+  resolvedAt   DateTime? @map("resolved_at")
+  csatRating   Int?      @map("csat_rating") // 1 to 5
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, ticketNo])
+  @@index([tenantId, status])
+  @@map("customer_tickets")
+}
+
+model AuditFinding {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  findingNo     String    @map("finding_no")
+  auditedModule String    @map("audited_module") // finance|procurement|siteops|hr|sales
+  title         String
+  description   String
+  severity      String    @default("medium") // low|medium|high|critical
+  capaPlan      String?   @map("capa_plan") // Corrective & Preventive Action
+  dueOn         DateTime  @map("due_on")
+  status        String    @default("open") // open|capa_submitted|verified|closed
+  assignedTo    String?   @map("assigned_to")
+  closedAt      DateTime? @map("closed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, findingNo])
+  @@index([tenantId, status])
+  @@map("audit_findings")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {
