@@ -1301,6 +1301,59 @@ model ContractClaim {
   @@map("contract_claims")
 }
 
+// ── FP&A Enterprise Budgeting & Forecasting P1c ─────────────────────────────
+
+model EnterpriseBudget {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  fiscalYear  String    @map("fiscal_year") // e.g. "FY2026-27"
+  title       String
+  versionNo   Int       @default(1) @map("version_no")
+  status      String    @default("draft") // draft|submitted|approved|locked|superseded
+  totalPaise  BigInt    @default(0) @map("total_paise")
+  approvedBy  String?   @map("approved_by")
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  lines     BudgetLine[]
+  scenarios ForecastScenario[]
+
+  @@unique([tenantId, fiscalYear, versionNo])
+  @@index([tenantId, status])
+  @@map("enterprise_budgets")
+}
+
+model BudgetLine {
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  budgetId    String  @map("budget_id") @db.Uuid
+  costCenter  String  @map("cost_center") // e.g. "CC-EXEC", "PROJECT-A"
+  accountCode String  @map("account_code")
+  period      String  // e.g. "2026-09"
+  amountPaise BigInt  @map("amount_paise")
+
+  budget EnterpriseBudget @relation(fields: [budgetId], references: [id])
+
+  @@index([tenantId, budgetId])
+  @@index([tenantId, costCenter, period])
+  @@map("budget_lines")
+}
+
+model ForecastScenario {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  budgetId    String   @map("budget_id") @db.Uuid
+  name        String   // e.g. "Base", "Optimistic", "Pessimistic"
+  growthBps   Int      @default(0) @map("growth_bps") // basis points (-2000 to +5000)
+  inflationBps Int     @default(500) @map("inflation_bps") // 5% default
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  budget EnterpriseBudget @relation(fields: [budgetId], references: [id])
+
+  @@index([tenantId, budgetId])
+  @@map("forecast_scenarios")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {

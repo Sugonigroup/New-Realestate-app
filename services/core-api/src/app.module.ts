@@ -15,6 +15,7 @@ import { FinanceModule } from "./finance/finance.module.js";
 import { ProjectsModule } from "./projects/projects.module.js";
 import { ProcurementModule } from "./procurement/procurement.module.js";
 import { ContractsModule } from "./contracts/contracts.module.js";
+import { BudgetingModule } from "./budgeting/budgeting.module.js";
 import { MarketingModule } from "./marketing/marketing.module.js";
 import { HrModule } from "./hr/hr.module.js";
 import { ComplianceModule } from "./compliance/compliance.module.js";
@@ -27,7 +28,7 @@ import { SecurityHeadersMiddleware, BodyLimitMiddleware } from "./common/securit
 import { AppController } from "./app.controller.js";
 
 @Module({
-  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule, ProcurementModule, ContractsModule, ComplianceModule, AdminModule, AiModule, MarketingModule, HrModule],
+  imports: [RequestContextModule, PrismaModule, HealthModule, PermissionsModule, AuthModule, WorkflowModule, NotifyModule, DocumentsModule, CrmModule, SalesModule, PortalModule, FinanceModule, ProjectsModule, ProcurementModule, ContractsModule, BudgetingModule, ComplianceModule, AdminModule, AiModule, MarketingModule, HrModule],
   controllers: [AppController],
   providers: [{ provide: APP_FILTER, useClass: ProblemJsonExceptionFilter }],
 })
