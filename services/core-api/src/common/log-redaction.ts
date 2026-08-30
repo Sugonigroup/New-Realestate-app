@@ -1,10 +1,11 @@
 /** PII redaction for logs (03 §7, 16 §5): Aadhaar/PAN/phone/email never reach a log sink. */
 
 const PATTERNS: Array<[RegExp, string]> = [
-  // phone first (with +91 prefix) so 12-digit mobiles don't hit the Aadhaar pattern
-  [/\b(?:\+91[- ]?)?[6-9]\d{9}\b/g, "[PHONE]"],
+  // phone first, lookbehind (not \b) so the +91 prefix is covered; 12-digit
+  // mobiles don't fall through to the Aadhaar pattern
+  [/(?<!\d)(?:0|\+91[- ]?)?[6-9]\d{9}\b/g, "[PHONE]"],
   [/\b[A-Z]{5}\d{4}[A-Z]\b/g, "[PAN]"],
-  [/\b\d{4}\s?\d{4}\s?\d{4}\b/g, "[AADHAAR]"],
+  [/(?<!\d)\d{4}\s?\d{4}\s?\d{4}(?!\d)/g, "[AADHAAR]"],
   [/\b[\w.+-]+@[\w-]+\.[\w.]+\b/g, "[EMAIL]"],
 ];
 
