@@ -1220,6 +1220,87 @@ model GrnLine {
   @@map("grn_lines")
 }
 
+// ── Contracts & Legal P1b ────────────────────────────────────────────────────
+
+model LegalContract {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  projectId     String?   @map("project_id") @db.Uuid
+  contractNo    String    @map("contract_no")
+  title         String
+  partyName     String    @map("party_name") // vendor/contractor/landowner/client name
+  partyRole     String    @map("party_role") // contractor|vendor|landowner|consultant|client
+  status        String    @default("draft") // draft|in_review|active|amended|expired|terminated|closed
+  totalPaise    BigInt    @default(0) @map("total_paise")
+  effectiveFrom DateTime  @map("effective_from")
+  effectiveTo   DateTime? @map("effective_to")
+  signedAt      DateTime? @map("signed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  clauses     ContractClause[]
+  obligations ContractObligation[]
+  claims      ContractClaim[]
+
+  @@unique([tenantId, contractNo])
+  @@index([tenantId, status])
+  @@map("legal_contracts")
+}
+
+model ContractClause {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  contractId  String   @map("contract_id") @db.Uuid
+  sectionNo   String   @map("section_no")
+  title       String
+  bodyText    String   @map("body_text")
+  versionNo   Int      @default(1) @map("version_no")
+  isStandard  Boolean  @default(true) @map("is_standard")
+  riskLevel   String   @default("low") @map("risk_level") // low|medium|high|critical
+
+  contract LegalContract @relation(fields: [contractId], references: [id])
+
+  @@index([tenantId, contractId])
+  @@map("contract_clauses")
+}
+
+model ContractObligation {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  contractId  String    @map("contract_id") @db.Uuid
+  title       String
+  description String?
+  dueOn       DateTime  @map("due_on")
+  status      String    @default("pending") // pending|fulfilled|overdue|waived
+  fulfilledAt DateTime? @map("fulfilled_at")
+  ownerRole   String    @map("owner_role")
+
+  contract LegalContract @relation(fields: [contractId], references: [id])
+
+  @@index([tenantId, contractId])
+  @@index([tenantId, status])
+  @@map("contract_obligations")
+}
+
+model ContractClaim {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  contractId  String    @map("contract_id") @db.Uuid
+  claimNo     String    @map("claim_no")
+  raisedBy    String    @map("raised_by") // internal|counterparty
+  nature      String    // delay_penalty|scope_change|quality_defect|payment_dispute|force_majeure
+  amountPaise BigInt    @default(0) @map("amount_paise")
+  status      String    @default("open") // open|under_negotiation|settled|arbitration|rejected
+  settledPaise BigInt?  @map("settled_paise")
+  settledAt   DateTime? @map("settled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  contract LegalContract @relation(fields: [contractId], references: [id])
+
+  @@unique([tenantId, claimNo])
+  @@index([tenantId, contractId])
+  @@map("contract_claims")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {
