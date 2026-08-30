@@ -10,5 +10,9 @@
   "devDependencies": {
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "@buildos/core-api": "workspace:*",
+    "@prisma/client": "^6.19.3"
   }
 }
