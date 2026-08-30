@@ -81,11 +81,29 @@ export class CrmController {
   async inbox(@Query("status") status?: string): Promise<unknown> {
     this.permissions.require("crm.lead.read");
     const ctx = getRequestContext();
-    return this.crm["prisma"].lead.findMany({
-      where: { tenantId: ctx!.tenantId!, ...(status ? { status } : {}) },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    });
+    return this.crm.listLeads(ctx!.tenantId!, status);
+  }
+
+  @Get("crm/leads/:id")
+  async lead(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.crm.getLead(ctx!.tenantId!, id);
+  }
+
+  @Get("crm/leads/:id/interactions")
+  async interactions(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.crm.listInteractions(ctx!.tenantId!, id);
+  }
+
+  @Post("crm/leads/:id/status")
+  async moveStatus(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const { status } = z.object({ status: z.string().min(3) }).parse(body);
+    const ctx = getRequestContext();
+    return this.crm.updateStatus(ctx!.tenantId!, id, status);
   }
 
   @Post("crm/leads/:id/interactions")

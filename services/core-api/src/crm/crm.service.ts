@@ -39,6 +39,24 @@ export interface RoutingContext {
  * Single entry point for every source (website, Meta/Google, portals, IVR,
  * WhatsApp inbound, walk-ins, partner imports, CSV).
  */
+const LEAD_TRANSITIONS: Record<string, string[]> = {
+  new: ["contacted", "lost"],
+  contacted: ["qualified", "lost"],
+  qualified: ["visit_scheduled", "lost"],
+  visit_scheduled: ["visited", "lost"],
+  visited: ["negotiation", "lost"],
+  negotiation: ["booking", "lost"],
+  booking: ["won", "lost"],
+  won: [],
+  lost: [],
+};
+
+export function assertLeadTransition(from: string, to: string): void {
+  if (!LEAD_TRANSITIONS[from]?.includes(to)) {
+    throw new RangeError(`illegal lead transition: ${from} → ${to}`);
+  }
+}
+
 @Injectable()
 export class CrmService {
   constructor(private readonly prisma: PrismaService) {}
@@ -125,6 +143,40 @@ export class CrmService {
       dedupFlag: decision.kind === "linked" ? "linked" : undefined,
       assignedUserId: routed?.assignedUserId,
     };
+  }
+
+  /** One lead with its interaction timeline. */
+  async getLead(tenantId: string, leadId: string): Promise<unknown> {
+    const lead = await this.prisma.lead.findFirst({
+      where: { id: leadId, tenantId },
+      include: { interactions: { orderBy: { createdAt: "asc" } } },
+    });
+    if (!lead) throw new NotFoundException("lead not found");
+    return lead;
+  }
+
+  async listLeads(tenantId: string, status?: string): Promise<unknown[]> {
+    return this.prisma.lead.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }
+
+  async listInteractions(tenantId: string, leadId: string): Promise<unknown[]> {
+    return this.prisma.interaction.findMany({
+      where: { tenantId, leadId },
+      orderBy: { createdAt: "asc" },
+    });
+  }
+
+  /** Pipeline kanban moves — transitions are the law (03 §3 pattern). */
+  async updateStatus(tenantId: string, leadId: string, to: string): Promise<{ id: string; status: string }> {
+    const lead = await this.prisma.lead.findFirst({ where: { id: leadId, tenantId } });
+    if (!lead) throw new NotFoundException("lead not found");
+    assertLeadTransition(lead.status, to);
+    const updated = await this.prisma.lead.update({ where: { id: leadId }, data: { status: to } });
+    return { id: updated.id, status: to };
   }
 
   /** First human/agent response stops the SLA clock and moves the pipeline. */

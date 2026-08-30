@@ -18,7 +18,16 @@
     "afterFiles": [],
     "fallback": []
   },
-  "dynamicRoutes": [],
+  "dynamicRoutes": [
+    {
+      "page": "/crm/leads/[id]",
+      "regex": "^/crm/leads/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/crm/leads/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
   "staticRoutes": [
     {
       "page": "/",
@@ -33,10 +42,34 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/crm",
+      "regex": "^/crm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/crm(?:/)?$"
+    },
+    {
       "page": "/login",
       "regex": "^/login(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/login(?:/)?$"
+    },
+    {
+      "page": "/sales/bookings",
+      "regex": "^/sales/bookings(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sales/bookings(?:/)?$"
+    },
+    {
+      "page": "/sales/bookings/new",
+      "regex": "^/sales/bookings/new(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sales/bookings/new(?:/)?$"
+    },
+    {
+      "page": "/sales/inventory",
+      "regex": "^/sales/inventory(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sales/inventory(?:/)?$"
     }
   ],
   "dataRoutes": [],

@@ -1,5 +1,10 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/crm/leads/[id]/page": "app/crm/leads/[id]/page.js",
+  "/sales/bookings/new/page": "app/sales/bookings/new/page.js",
+  "/sales/inventory/page": "app/sales/inventory/page.js",
   "/page": "app/page.js",
-  "/login/page": "app/login/page.js"
+  "/crm/page": "app/crm/page.js",
+  "/login/page": "app/login/page.js",
+  "/sales/bookings/page": "app/sales/bookings/page.js"
 }

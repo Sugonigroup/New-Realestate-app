@@ -245,6 +245,22 @@ export class BookingService {
     };
   }
 
+  async listBookings(tenantId: string, status?: string): Promise<unknown[]> {
+    return this.prisma.booking.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  }
+
+  async listUnits(tenantId: string, projectId: string): Promise<unknown[]> {
+    return this.prisma.unit.findMany({
+      where: { tenantId, projectId },
+      orderBy: [{ tower: "asc" }, { floor: "asc" }, { code: "asc" }],
+      take: 500,
+    });
+  }
+
   /** AFT status progression until the eSign adapter lands (integrations phase). */
   async advanceAft(tenantId: string, bookingId: string, to: "draft" | "sent" | "signed" | "registered"): Promise<unknown> {
     const order = ["not_started", "draft", "sent", "signed", "registered"] as const;

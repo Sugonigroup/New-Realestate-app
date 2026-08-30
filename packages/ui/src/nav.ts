@@ -4,14 +4,16 @@ import { ROLE_MAP } from "@buildos/permissions";
 export interface NavItem {
   key: string;
   label: string;
+  href?: string;
   /** first segment of the module's permission space; null = always visible */
   module: string | null;
 }
 
 export const ERP_NAV: NavItem[] = [
-  { key: "dashboard", label: "Dashboard", module: null },
-  { key: "crm", label: "CRM", module: "crm" },
-  { key: "sales", label: "Sales", module: "sales" },
+  { key: "dashboard", label: "Dashboard", module: null, href: "/" },
+  { key: "crm", label: "CRM", module: "crm", href: "/crm" },
+  { key: "sales", label: "Inventory", module: "sales", href: "/sales/inventory" },
+  { key: "sales_bookings", label: "Bookings", module: "sales", href: "/sales/bookings" },
   { key: "marketing", label: "Marketing", module: "marketing" },
   { key: "projects", label: "Projects", module: "projects" },
   { key: "procurement", label: "Procurement", module: "procurement" },

@@ -1,5 +1,10 @@
 {
   "/_not-found/page": "/_not-found",
+  "/crm/leads/[id]/page": "/crm/leads/[id]",
+  "/sales/bookings/new/page": "/sales/bookings/new",
+  "/sales/inventory/page": "/sales/inventory",
   "/page": "/",
-  "/login/page": "/login"
+  "/crm/page": "/crm",
+  "/login/page": "/login",
+  "/sales/bookings/page": "/sales/bookings"
 }

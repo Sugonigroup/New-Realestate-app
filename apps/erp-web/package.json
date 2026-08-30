@@ -8,7 +8,9 @@
     "start": "next start"
   },
   "dependencies": {
+    "@buildos/api-client": "workspace:*",
     "@buildos/ui": "workspace:*",
+    "@tanstack/react-table": "^8.21.3",
     "next": "^15.5.24",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"

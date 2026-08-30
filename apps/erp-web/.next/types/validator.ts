@@ -36,6 +36,24 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 }
 
 
+// Validate ../../src/app/crm/leads/[id]/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/crm/leads/[id]">> = Specific
+  const handler = {} as typeof import("../../src/app/crm/leads/[id]/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/crm/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/crm">> = Specific
+  const handler = {} as typeof import("../../src/app/crm/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/login/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/login">> = Specific
@@ -49,6 +67,33 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 {
   type __IsExpected<Specific extends AppPageConfig<"/">> = Specific
   const handler = {} as typeof import("../../src/app/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/sales/bookings/new/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/sales/bookings/new">> = Specific
+  const handler = {} as typeof import("../../src/app/sales/bookings/new/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/sales/bookings/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/sales/bookings">> = Specific
+  const handler = {} as typeof import("../../src/app/sales/bookings/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/sales/inventory/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/sales/inventory">> = Specific
+  const handler = {} as typeof import("../../src/app/sales/inventory/page.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
