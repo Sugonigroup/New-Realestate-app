@@ -1516,6 +1516,61 @@ model AuditFinding {
   @@map("audit_findings")
 }
 
+// ── Treasury & Debt Facilities FPA-02 ───────────────────────────────────────
+
+model DebtFacility {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  facilityNo      String    @map("facility_no")
+  lenderName      String    @map("lender_name")
+  facilityType    String    // term_loan|construction_finance|cc_od|lap
+  sanctionedPaise BigInt    @map("sanctioned_paise")
+  drawnPaise      BigInt    @default(0) @map("drawn_paise")
+  repaidPaise     BigInt    @default(0) @map("repaid_paise")
+  annualRateBps   Int       @map("annual_rate_bps") // e.g. 1050 = 10.5% p.a.
+  tenureMonths    Int       @map("tenure_months")
+  securedAgainst  String?   @map("secured_against")
+  status          String    @default("active") // active|closed|npa
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  transactions DebtTransaction[]
+
+  @@unique([tenantId, facilityNo])
+  @@index([tenantId, status])
+  @@map("debt_facilities")
+}
+
+model DebtTransaction {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  facilityId   String   @map("facility_id") @db.Uuid
+  txnType      String   @map("txn_type") // drawdown|repayment
+  amountPaise  BigInt   @map("amount_paise")
+  txnDate      DateTime @map("txn_date")
+  narration    String?
+
+  facility DebtFacility @relation(fields: [facilityId], references: [id])
+
+  @@index([tenantId, facilityId])
+  @@map("debt_transactions")
+}
+
+model CashForecastSnapshot {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  period         String   // "2026-09"
+  openingPaise   BigInt   @map("opening_paise")
+  inflowPaise    BigInt   @map("inflow_paise")
+  outflowPaise   BigInt   @map("outflow_paise")
+  closingPaise   BigInt   @map("closing_paise")
+  burnRatePaise  BigInt   @map("burn_rate_paise") // monthly net outflow when negative
+  runwayMonths   Decimal? @map("runway_months") @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, period])
+  @@map("cash_forecast_snapshots")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {
