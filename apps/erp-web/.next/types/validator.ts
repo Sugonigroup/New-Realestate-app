@@ -36,6 +36,42 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 }
 
 
+// Validate ../../src/app/admin/audit/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/admin/audit">> = Specific
+  const handler = {} as typeof import("../../src/app/admin/audit/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/admin/roles/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/admin/roles">> = Specific
+  const handler = {} as typeof import("../../src/app/admin/roles/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/compliance/calendar/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/compliance/calendar">> = Specific
+  const handler = {} as typeof import("../../src/app/compliance/calendar/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/compliance/rera/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/compliance/rera">> = Specific
+  const handler = {} as typeof import("../../src/app/compliance/rera/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/crm/leads/[id]/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/crm/leads/[id]">> = Specific

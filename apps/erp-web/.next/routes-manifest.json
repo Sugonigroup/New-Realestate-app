@@ -58,6 +58,30 @@
       "namedRegex": "^/_not\\-found(?:/)?$"
     },
     {
+      "page": "/admin/audit",
+      "regex": "^/admin/audit(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/audit(?:/)?$"
+    },
+    {
+      "page": "/admin/roles",
+      "regex": "^/admin/roles(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/roles(?:/)?$"
+    },
+    {
+      "page": "/compliance/calendar",
+      "regex": "^/compliance/calendar(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/compliance/calendar(?:/)?$"
+    },
+    {
+      "page": "/compliance/rera",
+      "regex": "^/compliance/rera(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/compliance/rera(?:/)?$"
+    },
+    {
       "page": "/crm",
       "regex": "^/crm(?:/)?$",
       "routeKeys": {},

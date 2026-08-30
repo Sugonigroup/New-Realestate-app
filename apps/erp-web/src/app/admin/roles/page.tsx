@@ -1,0 +1,28 @@
+import { cookies } from "next/headers";
+import { DataTable } from "@buildos/ui";
+import type { ColumnDef } from "@tanstack/react-table";
+import { serverApi } from "@/lib/api";
+
+interface RoleRow { code: string; name: string; external: boolean; grants: string[]; denied: string[] }
+
+const columns: ColumnDef<RoleRow, unknown>[] = [
+  { accessorKey: "code", header: "Code" },
+  { accessorKey: "name", header: "Role" },
+  { id: "grants", header: "Grants", cell: ({ row }) => row.original.grants.join(", ") },
+  { id: "denied", header: "Denied", cell: ({ row }) => row.original.denied.join(", ") || "—" },
+];
+
+/** Role matrix (U4, read-only view; edits via API). */
+export default async function RolesPage() {
+  const token = (await cookies()).get("access_token")?.value;
+  let roles: RoleRow[] = [];
+  try {
+    roles = (await serverApi(token).get<RoleRow[]>("/v1/admin/roles")) ?? [];
+  } catch { /* degraded */ }
+  return (
+    <main className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">Role matrix</h1>
+      <DataTable<RoleRow> data={roles} columns={columns} />
+    </main>
+  );
+}
