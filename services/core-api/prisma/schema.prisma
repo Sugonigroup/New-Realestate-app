@@ -1901,6 +1901,52 @@ model CrmRecommendation {
   @@map("crm_recommendations")
 }
 
+// ── CRM Customization & Views (CRM-021/022/072/073) ─────────────────────────
+
+model CrmSavedView {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  name       String
+  entityType String   @map("entity_type") // lead|opportunity
+  filters    Json     // {status, source, projectId, assigneeId, slaBreached…}
+  columns    Json?    // column config (CRM-074)
+  ownerId    String   @map("owner_id") @db.Uuid
+  isShared   Boolean  @default(false) @map("is_shared")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, entityType, name, ownerId])
+  @@index([tenantId, entityType])
+  @@map("crm_saved_views")
+}
+
+model CrmCustomField {
+  id         String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String  @map("tenant_id") @db.Uuid
+  entityType String  @map("entity_type") // lead|opportunity
+  key        String
+  label      String
+  fieldType  String  @map("field_type") // text|number|date|select|boolean
+  options    Json?   // select choices
+  required   Boolean @default(false)
+  active     Boolean @default(true)
+
+  @@unique([tenantId, entityType, key])
+  @@map("crm_custom_fields")
+}
+
+model CrmCustomFieldValue {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id") @db.Uuid
+  fieldKey   String   @map("field_key")
+  value      String?  // serialized scalar
+
+  @@unique([tenantId, entityType, entityId, fieldKey])
+  @@index([tenantId, entityId])
+  @@map("crm_custom_field_values")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {

@@ -12,6 +12,7 @@ import { EngagementService } from "./engagement.service.js";
 import { CrmCommsService } from "./comms.service.js";
 import { CrmAnalyticsService } from "./analytics.service.js";
 import { CrmAssistService } from "./assist.service.js";
+import { CrmConfigService } from "./config.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -60,6 +61,7 @@ export class CrmController {
     private readonly comms: CrmCommsService,
     private readonly analytics: CrmAnalyticsService,
     private readonly assist: CrmAssistService,
+    private readonly config: CrmConfigService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -494,5 +496,86 @@ export class CrmController {
     this.permissions.require("crm.lead.read");
     const ctx = getRequestContext();
     return this.assist.copilotBrief(ctx!.tenantId!, id);
+  }
+
+  // ── Customization & bulk (CRM-072/022/099/104) ──────────────────────────
+
+  @Post("crm/views")
+  async createView(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const dto = z
+      .object({
+        name: z.string().min(1),
+        entityType: z.enum(["lead", "opportunity"]),
+        filters: z.record(z.unknown()),
+        columns: z.array(z.string()).optional(),
+        isShared: z.boolean().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.config.createSavedView(ctx!.tenantId!, { ...dto, ownerId: ctx!.userId! });
+  }
+
+  @Get("crm/views")
+  async listViews(@Query("entityType") entityType: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.config.listViews(ctx!.tenantId!, entityType ?? "lead", ctx!.userId!);
+  }
+
+  @Post("crm/custom-fields")
+  async defineField(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("settings.roles.write");
+    const dto = z
+      .object({
+        entityType: z.enum(["lead", "opportunity"]),
+        key: z.string().min(1),
+        label: z.string().min(1),
+        fieldType: z.enum(["text", "number", "date", "select", "boolean"]),
+        options: z.array(z.string()).optional(),
+        required: z.boolean().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.config.defineField(ctx!.tenantId!, dto);
+  }
+
+  @Post("crm/custom-fields/values")
+  async setFieldValue(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        entityType: z.enum(["lead", "opportunity"]),
+        entityId: z.string().uuid(),
+        fieldKey: z.string().min(1),
+        value: z.string(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.config.setFieldValue(ctx!.tenantId!, dto);
+  }
+
+  @Get("crm/custom-fields/values")
+  async getFieldValues(@Query("entityType") entityType: string, @Query("entityId") entityId: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.config.getFieldValues(ctx!.tenantId!, entityType, entityId);
+  }
+
+  @Post("crm/leads/bulk-assign")
+  async bulkAssign(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.assign");
+    const dto = z
+      .object({ leadIds: z.array(z.string().uuid()).min(1).max(200), toUserId: z.string().uuid() })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.config.bulkAssign(ctx!.tenantId!, dto.leadIds, dto.toUserId, ctx!.userId!);
+  }
+
+  @Get("crm/data-quality")
+  async dataQuality(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.config.dataQualityScan(ctx!.tenantId!);
   }
 }
