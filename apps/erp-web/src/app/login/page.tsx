@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [tenantSlug, setTenant] = useState("shree-developers");
   const [email, setEmail] = useState("admin@shree.example");
   const [password, setPassword] = useState("");
+  const [mfaCode, setMfa] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +22,7 @@ export default function LoginPage() {
       const res = await fetch(`${CORE_API}/v1/auth/login`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ tenantSlug, email, password }),
+        body: JSON.stringify({ tenantSlug, email, password, mfaCode: mfaCode || undefined }),
       });
       if (!res.ok) {
         const problem = (await res.json()) as { title?: string };
@@ -78,6 +79,18 @@ export default function LoginPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+        />
+        <label className="mb-1 block text-xs uppercase tracking-wide" style={{ color: "var(--bo-text-muted)" }}>
+          MFA Code (6-digit, if enrolled)
+        </label>
+        <input
+          className="mb-4 w-full rounded border px-3 py-2 font-mono"
+          style={{ borderColor: "var(--bo-border)", background: "var(--bo-bg)" }}
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="123456"
+          value={mfaCode}
+          onChange={(e) => setMfa(e.target.value.replace(/\D/g, ""))}
         />
         {error && (
           <p className="mb-4 text-sm" style={{ color: "var(--bo-danger)" }}>
