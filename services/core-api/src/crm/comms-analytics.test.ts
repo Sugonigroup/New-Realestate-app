@@ -44,7 +44,8 @@ function fakePrisma() {
     },
     consentLedger: {
       create: vi.fn(async ({ data }: any) => {
-        const r = { id: nid("c"), createdAt: new Date(), ...data };
+        // strictly increasing timestamps so "latest entry" ordering is deterministic
+        const r = { id: nid("c"), createdAt: new Date(Date.now() + db.consents.length), ...data };
         db.consents.push(r);
         return r;
       }),
