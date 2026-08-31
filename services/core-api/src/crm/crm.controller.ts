@@ -9,6 +9,8 @@ import { PermissionsService } from "../permissions/permissions.service.js";
 import { CrmService, type RoutingContext } from "./crm.service.js";
 import { CrmPipelineService } from "./pipeline.service.js";
 import { EngagementService } from "./engagement.service.js";
+import { CrmCommsService } from "./comms.service.js";
+import { CrmAnalyticsService } from "./analytics.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -54,6 +56,8 @@ export class CrmController {
     private readonly crm: CrmService,
     private readonly pipeline: CrmPipelineService,
     private readonly engagement: EngagementService,
+    private readonly comms: CrmCommsService,
+    private readonly analytics: CrmAnalyticsService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -346,5 +350,86 @@ export class CrmController {
     this.permissions.require("crm.lead.update");
     const ctx = getRequestContext();
     return this.engagement.executeExecution(ctx!.tenantId!, id);
+  }
+
+  // ── Communications (CRM-2) ──────────────────────────────────────────────
+
+  @Post("crm/comms/consent")
+  async recordConsent(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        personId: z.string().uuid(),
+        channel: z.enum(["whatsapp", "email", "sms", "call"]),
+        status: z.enum(["granted", "revoked"]),
+        source: z.string().min(1),
+        evidence: z.string().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.comms.recordConsent(ctx!.tenantId!, dto);
+  }
+
+  @Post("crm/comms/send")
+  async sendComm(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        leadId: z.string().uuid().optional(),
+        personId: z.string().uuid().optional(),
+        channel: z.enum(["email", "whatsapp", "sms"]),
+        templateKey: z.string().optional(),
+        body: z.string().min(1).max(4000),
+        threadId: z.string().uuid().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.comms.send(ctx!.tenantId!, dto);
+  }
+
+  @Post("crm/comms/inbound")
+  async receiveInbound(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const dto = z
+      .object({
+        channel: z.enum(["email", "whatsapp", "sms"]),
+        fromPhone: z.string().optional(),
+        fromEmail: z.string().email().optional(),
+        body: z.string().min(1),
+        providerMessageId: z.string().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.comms.receiveInbound(ctx!.tenantId!, dto);
+  }
+
+  @Get("crm/comms/threads/:threadId")
+  async thread(@Param("threadId") threadId: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.comms.thread(ctx!.tenantId!, threadId);
+  }
+
+  // ── Analytics (CRM-4) ───────────────────────────────────────────────────
+
+  @Get("crm/analytics/funnel")
+  async funnel(@Query("projectId") projectId?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.analytics.funnel(ctx!.tenantId!, projectId);
+  }
+
+  @Get("crm/analytics/sources")
+  async sources(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.analytics.sourceAnalytics(ctx!.tenantId!);
+  }
+
+  @Get("crm/analytics/reps")
+  async reps(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.analytics.repAnalytics(ctx!.tenantId!);
   }
 }
