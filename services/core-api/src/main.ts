@@ -8,6 +8,11 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   app.setGlobalPrefix("v1");
 
+  // Browser apps (erp-web :3000, portals) call this API cross-origin in dev/staging.
+  // CORS_ORIGINS is a comma-separated allowlist; unset = reflect origin (dev only).
+  const corsOrigins = process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()).filter(Boolean);
+  app.enableCors({ origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : true, credentials: true });
+
   const openapi = new DocumentBuilder()
     .setTitle("BuildOS Core API")
     .setDescription("AI-operated construction ERP — system of record (Phase 0 skeleton)")
