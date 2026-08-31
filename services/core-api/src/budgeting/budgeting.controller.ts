@@ -72,6 +72,8 @@ export class BudgetingController {
   @Get("budgets/:id/variance")
   async varianceReport(@Param("id") id: string, @Query("period") period: string): Promise<unknown> {
     await this.permissions.requireAsync("reports.read");
+    z.string().uuid().parse(id);
+    z.string().regex(/^\d{4}-\d{2}$/).parse(period);
     const ctx = getRequestContext();
     return this.budgeting.varianceReport(ctx!.tenantId!, id, period);
   }

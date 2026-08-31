@@ -1,4 +1,5 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from "@nestjs/common";
+import { ZodError } from "zod";
 import type { Response } from "express";
 import { getRequestContext } from "./request-context.js";
 
@@ -23,6 +24,16 @@ export class ProblemJsonExceptionFilter implements ExceptionFilter {
 
   private toProblem(exception: unknown): ProblemDetails {
     const correlationId = getRequestContext()?.correlationId;
+    if (exception instanceof ZodError) {
+      // Controller DTO validation — client error with field-level issues (03 §1).
+      return {
+        type: "https://buildos.dev/problems/validation",
+        title: "Request validation failed",
+        status: 400,
+        errors: exception.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+        correlationId,
+      };
+    }
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const body = exception.getResponse() as string | Record<string, unknown>;

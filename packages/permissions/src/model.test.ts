@@ -9,8 +9,9 @@ import {
 import { ROLE_MAP, ROLE_TEMPLATES } from "./roles.js";
 
 describe("permission strings", () => {
-  it("requires ≥3 segments", () => {
-    expect(() => parsePermission("sales.booking")).toThrow(TypeError);
+  it("requires ≥2 segments (module-level context.action is legal, bare action is not)", () => {
+    expect(() => parsePermission("booking")).toThrow(TypeError);
+    expect(parsePermission("reports.read").segments).toEqual(["reports", "read"]);
     expect(parsePermission("sales.booking.create").segments).toEqual(["sales", "booking", "create"]);
   });
 

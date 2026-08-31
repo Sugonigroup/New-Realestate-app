@@ -20,11 +20,11 @@ export function parsePattern(p: string): ParsedPermission {
   return { segments };
 }
 
-/** Strict parse for required permissions: ≥3 concrete segments (context.resource.action). */
+/** Strict parse for required permissions: ≥2 segments — `context.resource.action` (canonical) or module-level `context.action`. */
 export function parsePermission(p: string): ParsedPermission {
   const { segments } = parsePattern(p);
-  if (segments.length < 3) {
-    throw new TypeError(`permission must have ≥3 segments (context.resource.action): "${p}"`);
+  if (segments.length < 2) {
+    throw new TypeError(`permission must have ≥2 segments (context[.resource].action): "${p}"`);
   }
   return { segments };
 }
