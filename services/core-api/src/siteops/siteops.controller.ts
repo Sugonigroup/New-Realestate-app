@@ -6,6 +6,7 @@ import { PermissionsService } from "../permissions/permissions.service.js";
 import { SubcontractorService } from "./subcontractor.service.js";
 import { QualityService } from "./quality.service.js";
 import { HseService } from "./hse.service.js";
+import { InventoryService } from "./inventory.service.js";
 
 const subWoDto = z.object({
   woNo: z.string().min(1),
@@ -73,6 +74,38 @@ const incidentDto = z.object({
   description: z.string().min(1),
 });
 
+const receiptDto = z.object({
+  projectId: z.string().uuid(),
+  materialId: z.string().min(1),
+  materialName: z.string().min(1),
+  unit: z.string().min(1),
+  qty: z.number().positive(),
+  unitCostPaise: z.string().regex(/^\d+$/),
+  refDocNo: z.string().min(1),
+});
+
+const issueDto = z.object({
+  projectId: z.string().uuid(),
+  materialId: z.string().min(1),
+  qty: z.number().positive(),
+  refDocNo: z.string().min(1),
+});
+
+const transferDto = z.object({
+  fromProjectId: z.string().uuid(),
+  toProjectId: z.string().uuid(),
+  materialId: z.string().min(1),
+  qty: z.number().positive(),
+  refDocNo: z.string().min(1),
+});
+
+const countDto = z.object({
+  countNo: z.string().min(1),
+  projectId: z.string().uuid(),
+  materialId: z.string().min(1),
+  countedQty: z.number().min(0),
+});
+
 @ApiTags("siteops")
 @Controller("siteops")
 export class SiteOpsController {
@@ -80,6 +113,7 @@ export class SiteOpsController {
     private readonly sub: SubcontractorService,
     private readonly quality: QualityService,
     private readonly hse: HseService,
+    private readonly inventory: InventoryService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -195,5 +229,53 @@ export class SiteOpsController {
     await this.permissions.requireAsync("projects.read");
     const ctx = getRequestContext();
     return this.hse.siteSafetyScore(ctx!.tenantId!, id);
+  }
+
+  // ── Inventory (INV-01) ──────────────────────────────────────────────────
+
+  @Post("inventory/receipts")
+  async receiveStock(@Body() body: unknown): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.grn.create");
+    const dto = receiptDto.parse(body);
+    const ctx = getRequestContext();
+    return this.inventory.receiveStock(ctx!.tenantId!, { ...dto, unitCostPaise: BigInt(dto.unitCostPaise) });
+  }
+
+  @Post("inventory/issues")
+  async issueStock(@Body() body: unknown): Promise<unknown> {
+    await this.permissions.requireAsync("inventory.issue");
+    const dto = issueDto.parse(body);
+    const ctx = getRequestContext();
+    return this.inventory.issueStock(ctx!.tenantId!, dto);
+  }
+
+  @Post("inventory/transfers")
+  async transferStock(@Body() body: unknown): Promise<unknown> {
+    await this.permissions.requireAsync("inventory.issue");
+    const dto = transferDto.parse(body);
+    const ctx = getRequestContext();
+    return this.inventory.transferStock(ctx!.tenantId!, dto);
+  }
+
+  @Post("inventory/counts")
+  async recordCount(@Body() body: unknown): Promise<unknown> {
+    await this.permissions.requireAsync("inventory.read");
+    const dto = countDto.parse(body);
+    const ctx = getRequestContext();
+    return this.inventory.recordCycleCount(ctx!.tenantId!, dto);
+  }
+
+  @Post("inventory/counts/:countNo/adjust")
+  async applyAdjustment(@Param("countNo") countNo: string): Promise<unknown> {
+    await this.permissions.requireAsync("inventory.writeoff.propose");
+    const ctx = getRequestContext();
+    return this.inventory.applyCountAdjustment(ctx!.tenantId!, countNo, ctx!.userId!);
+  }
+
+  @Get("inventory/reorder")
+  async reorderReport(@Query("projectId") projectId: string): Promise<unknown> {
+    await this.permissions.requireAsync("inventory.read");
+    const ctx = getRequestContext();
+    return this.inventory.reorderReport(ctx!.tenantId!, projectId);
   }
 }

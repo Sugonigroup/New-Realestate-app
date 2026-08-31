@@ -1055,6 +1055,7 @@ model MaterialStock {
   materialName  String  @map("material_name")
   unit          String
   stockQty      Decimal @map("stock_qty") @db.Decimal(18, 4)
+  wacPaise      BigInt  @default(0) @map("wac_paise") // weighted average cost per unit
   avgDailyConsumption Decimal @map("avg_daily_consumption") @db.Decimal(18, 4)
   inboundPoQty  Decimal @default(0) @map("inbound_po_qty") @db.Decimal(18, 4)
   leadTimeDays  Int     @default(7) @map("lead_time_days")
@@ -1063,6 +1064,46 @@ model MaterialStock {
 
   @@unique([tenantId, projectId, materialId])
   @@map("material_stock")
+}
+
+// ── Inventory Warehouse Depth INV-01 ────────────────────────────────────────
+
+model StockLedger {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  materialId     String   @map("material_id")
+  movementType   String   @map("movement_type") // grn_in|issue|transfer_in|transfer_out|adjustment|return
+  qty            Decimal  @map("qty") @db.Decimal(18, 4)
+  unitCostPaise  BigInt   @map("unit_cost_paise") // weighted avg cost at movement time
+  balanceAfter   Decimal  @map("balance_after") @db.Decimal(18, 4)
+  refDocType     String?  @map("ref_doc_type") // grn|issue_note|count|transfer
+  refDocNo       String?  @map("ref_doc_no")
+  movedAt        DateTime @map("moved_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, projectId, materialId])
+  @@map("stock_ledger")
+}
+
+model StockCount {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  countNo      String    @map("count_no")
+  projectId    String    @map("project_id") @db.Uuid
+  materialId   String    @map("material_id")
+  systemQty    Decimal   @map("system_qty") @db.Decimal(18, 4)
+  countedQty   Decimal   @map("counted_qty") @db.Decimal(18, 4)
+  varianceQty  Decimal   @map("variance_qty") @db.Decimal(18, 4)
+  variancePct  Decimal   @map("variance_pct") @db.Decimal(10, 2)
+  status       String    @default("pending") // pending|adjusted|rejected
+  adjustedBy   String?   @map("adjusted_by")
+  adjustedAt   DateTime? @map("adjusted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, countNo])
+  @@index([tenantId, status])
+  @@map("stock_counts")
 }
 
 // ── Procurement chain P1a: vendor → PR → RFQ → quotes → PO → GRN ────────────
