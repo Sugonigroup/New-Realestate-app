@@ -438,6 +438,7 @@ model Lead {
   assignedUserId   String?   @map("assigned_user_id") @db.Uuid
   slaRespondBy     DateTime? @map("sla_respond_by")
   firstRespondedAt DateTime? @map("first_responded_at")
+  slaBreachedAt    DateTime? @map("sla_breached_at") // stamped once by the escalation sweep
   dedupFlag        String?   @map("dedup_flag") // duplicate|linked (with matchLeadId)
   matchLeadId      String?   @map("match_lead_id") @db.Uuid
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -501,6 +502,7 @@ model Opportunity {
   budgetPaise       BigInt?   @map("budget_paise")
   financing         String    @default("loan") // cash|loan|pre_approved
   lostReason        String?   @map("lost_reason")
+  competitor        String?   // captured on loss (CRM-040)
   bookingId         String?   @map("booking_id") @db.Uuid // set on booking handoff (CRM-095)
   assignedUserId    String?   @map("assigned_user_id") @db.Uuid
   stalledSince      DateTime? @map("stalled_since")
@@ -1750,6 +1752,39 @@ model CashForecastSnapshot {
 
   @@unique([tenantId, period])
   @@map("cash_forecast_snapshots")
+}
+
+// ── CRM Automation Rules (CRM-008/012/071) ──────────────────────────────────
+
+model CrmAssignmentRule {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String
+  priority    Int      @default(100) // lower runs first
+  criteria    Json     // {projectId?, source?, segment?, language?, city?}
+  assignToUsers Json   @map("assign_to_users") // round-robin pool
+  slaMinutes  Int      @default(240) @map("sla_minutes")
+  createFirstCallTask Boolean @default(true) @map("create_first_call_task")
+  notifyManager Boolean @default(false) @map("notify_manager")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, active, priority])
+  @@map("crm_assignment_rules")
+}
+
+model CrmSlaRule {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  name            String
+  projectId       String? @map("project_id") @db.Uuid
+  source          String?
+  responseMinutes Int     @map("response_minutes")
+  escalateToUserId String? @map("escalate_to_user_id") @db.Uuid
+  active          Boolean @default(true)
+
+  @@index([tenantId, active])
+  @@map("crm_sla_rules")
 }
 
 // ── Vishesh Engagement Engine §28 ───────────────────────────────────────────

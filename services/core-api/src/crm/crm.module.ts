@@ -8,12 +8,13 @@ import { CrmAnalyticsService } from "./analytics.service.js";
 import { CrmAssistService } from "./assist.service.js";
 import { CrmConfigService } from "./config.service.js";
 import { CrmDraftService } from "./draft.service.js";
+import { CrmLifecycleService } from "./lifecycle.service.js";
 import { LlmGateway } from "../ai/gateway.js";
 import { CrmController } from "./crm.controller.js";
 
 @Module({ imports: [PermissionsModule],
-  providers: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, LlmGateway],
+  providers: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, CrmLifecycleService, LlmGateway],
   controllers: [CrmController],
-  exports: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService],
+  exports: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, CrmLifecycleService],
 })
 export class CrmModule {}

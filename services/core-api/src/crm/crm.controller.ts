@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, Query, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import type { RawBodyRequest } from "@nestjs/common";
 import type { Request } from "express";
 import { ApiTags } from "@nestjs/swagger";
@@ -14,6 +14,7 @@ import { CrmAnalyticsService } from "./analytics.service.js";
 import { CrmAssistService } from "./assist.service.js";
 import { CrmConfigService } from "./config.service.js";
 import { CrmDraftService } from "./draft.service.js";
+import { CrmLifecycleService } from "./lifecycle.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -64,6 +65,7 @@ export class CrmController {
     private readonly assist: CrmAssistService,
     private readonly config: CrmConfigService,
     private readonly drafts: CrmDraftService,
+    private readonly lifecycle: CrmLifecycleService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -211,6 +213,97 @@ export class CrmController {
     this.permissions.require("crm.lead.read");
     const ctx = getRequestContext();
     return this.pipeline.forecast(ctx!.tenantId!, projectId);
+  }
+
+  @Get("crm/analytics/opportunity-aging")
+  async aging(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.pipeline.aging(ctx!.tenantId!);
+  }
+
+  // ── Lead lifecycle completion (merge/update/convert, SLA sweep, rules) ──
+
+  @Patch("crm/leads/:id")
+  async updateLead(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        fullName: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        budgetPaise: z.string().regex(/^\d+$/).optional(),
+        segment: z.string().optional(),
+        projectId: z.string().uuid().optional(),
+        language: z.string().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.lifecycle.updateLead(ctx!.tenantId!, id, {
+      fullName: dto.fullName,
+      email: dto.email,
+      budgetPaise: dto.budgetPaise ? BigInt(dto.budgetPaise) : undefined,
+      segment: dto.segment,
+      projectId: dto.projectId,
+      language: dto.language,
+    }, ctx!.userId!);
+  }
+
+  @Post("crm/leads/:id/convert")
+  async convertLead(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ oppNo: z.string().min(1) }).parse(body);
+    const ctx = getRequestContext();
+    return this.lifecycle.convertLead(ctx!.tenantId!, id, dto.oppNo, ctx!.userId!);
+  }
+
+  @Post("crm/leads/:id/merge")
+  async mergeLead(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.assign");
+    const dto = z
+      .object({
+        duplicateId: z.string().uuid(),
+        fieldWinners: z.record(z.enum(["survivor", "duplicate", "longer"])).optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.lifecycle.mergeLeads(ctx!.tenantId!, id, dto.duplicateId, ctx!.userId!, dto.fieldWinners);
+  }
+
+  @Post("crm/automation/sla-sweep")
+  async slaSweep(): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.lifecycle.sweepSlaBreaches(ctx!.tenantId!);
+  }
+
+  @Post("crm/automation/assignment-rules")
+  async createAssignmentRule(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("settings.roles.write");
+    const dto = z
+      .object({
+        name: z.string().min(1),
+        priority: z.number().int().optional(),
+        criteria: z.object({
+          projectId: z.string().uuid().optional(),
+          source: z.string().optional(),
+          segment: z.string().optional(),
+          language: z.string().optional(),
+        }),
+        assignToUsers: z.array(z.string().uuid()).min(1),
+        slaMinutes: z.number().int().positive().optional(),
+        createFirstCallTask: z.boolean().optional(),
+        notifyManager: z.boolean().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.lifecycle.createAssignmentRule(ctx!.tenantId!, dto);
+  }
+
+  @Get("crm/automation/assignment-rules")
+  async listAssignmentRules(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.lifecycle.listAssignmentRules(ctx!.tenantId!);
   }
 
   @Get("crm/analytics/visit-funnel")

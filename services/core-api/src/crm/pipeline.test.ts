@@ -65,6 +65,7 @@ function fakePrisma() {
         return r;
       }),
     },
+    outboxEvent: { create: vi.fn(async ({ data }: any) => ({ id: `ob-${db.opps.length}-${db.leads.length}`, ...data })) },
   };
 
   return { prisma, db };

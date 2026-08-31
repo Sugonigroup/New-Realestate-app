@@ -72,7 +72,7 @@ export class CrmPipelineService {
       throw new BadRequestException(`stage must advance one step; ${opp.stage} → ${to} not allowed`);
     }
 
-    return this.prisma.opportunity.update({
+    const updated = await this.prisma.opportunity.update({
       where: { id: opp.id },
       data: {
         stage: to,
@@ -80,6 +80,10 @@ export class CrmPipelineService {
         stalledSince: null,
       },
     });
+    await this.prisma.outboxEvent.create({
+      data: { tenantId, aggregate: "opportunity", type: "opportunity.stage_changed.v1", payload: { oppNo, from: opp.stage, to } },
+    });
+    return updated;
   }
 
   async markLost(tenantId: string, oppNo: string, lostReason: string, competitor?: string) {
@@ -88,10 +92,14 @@ export class CrmPipelineService {
     if (opp.stage === "won") throw new ConflictException(`opportunity ${oppNo} is won; cannot mark lost`);
     if (!lostReason) throw new BadRequestException("lostReason is mandatory for lost opportunities");
 
-    return this.prisma.opportunity.update({
+    const updated = await this.prisma.opportunity.update({
       where: { id: opp.id },
-      data: { stage: "lost", lostReason, probabilityPct: 0 },
+      data: { stage: "lost", lostReason, competitor, probabilityPct: 0 },
     });
+    await this.prisma.outboxEvent.create({
+      data: { tenantId, aggregate: "opportunity", type: "opportunity.lost.v1", payload: { oppNo, lostReason, competitor } },
+    });
+    return updated;
   }
 
   /** Win = booking handoff. Requires hold/booking_pending stage and an actual booking reference. */
@@ -112,8 +120,33 @@ export class CrmPipelineService {
       where: { id: opp.leadId },
       data: { status: "won" },
     });
+    await this.prisma.outboxEvent.create({
+      data: { tenantId, aggregate: "opportunity", type: "opportunity.won.v1", payload: { oppNo, bookingId } },
+    });
 
     return updated;
+  }
+
+  /** Opportunity aging (CRM-041): days-in-stage buckets across open opps. */
+  async aging(tenantId: string, now: Date = new Date()) {
+    const opps = await this.prisma.opportunity.findMany({ where: { tenantId, stage: { notIn: ["won", "lost"] } } });
+    const buckets = { fresh: 0, week: 0, twoWeeks: 0, month: 0, aged: 0 };
+    let totalAgeDays = 0;
+    for (const o of opps) {
+      const since = (o.stalledSince ?? o.createdAt) as Date;
+      const days = Math.max(0, Math.floor((now.getTime() - new Date(since).getTime()) / 86_400_000));
+      totalAgeDays += days;
+      if (days <= 3) buckets.fresh += 1;
+      else if (days <= 7) buckets.week += 1;
+      else if (days <= 14) buckets.twoWeeks += 1;
+      else if (days <= 30) buckets.month += 1;
+      else buckets.aged += 1;
+    }
+    return {
+      openCount: opps.length,
+      avgAgeDays: opps.length > 0 ? Math.round(totalAgeDays / opps.length) : 0,
+      buckets,
+    };
   }
 
   /** Weighted pipeline = Σ(expectedValue × probability) for open stages. */
