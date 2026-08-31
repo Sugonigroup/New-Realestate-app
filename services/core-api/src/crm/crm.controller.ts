@@ -11,6 +11,7 @@ import { CrmPipelineService } from "./pipeline.service.js";
 import { EngagementService } from "./engagement.service.js";
 import { CrmCommsService } from "./comms.service.js";
 import { CrmAnalyticsService } from "./analytics.service.js";
+import { CrmAssistService } from "./assist.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -58,6 +59,7 @@ export class CrmController {
     private readonly engagement: EngagementService,
     private readonly comms: CrmCommsService,
     private readonly analytics: CrmAnalyticsService,
+    private readonly assist: CrmAssistService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -431,5 +433,66 @@ export class CrmController {
     this.permissions.require("crm.lead.read");
     const ctx = getRequestContext();
     return this.analytics.repAnalytics(ctx!.tenantId!);
+  }
+
+  // ── AI assist layer (CRM-6) ─────────────────────────────────────────────
+
+  @Post("crm/ai/generate-recommendations")
+  async generateRecommendations(): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.assist.generateRecommendations(ctx!.tenantId!);
+  }
+
+  @Get("crm/ai/recommendations")
+  async listRecommendations(@Query("status") status?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.assist.listRecommendations(ctx!.tenantId!, status ?? "pending");
+  }
+
+  @Post("crm/ai/recommendations/:id/decide")
+  async decideRecommendation(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ accept: z.boolean() }).parse(body);
+    const ctx = getRequestContext();
+    return this.assist.decideRecommendation(ctx!.tenantId!, id, dto.accept, ctx!.userId!);
+  }
+
+  @Post("crm/tasks")
+  async createTask(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        leadId: z.string().uuid().optional(),
+        oppNo: z.string().optional(),
+        title: z.string().min(1),
+        dueOn: z.string().datetime(),
+        assigneeId: z.string().uuid().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.assist.createTask(ctx!.tenantId!, { ...dto, dueOn: new Date(dto.dueOn) });
+  }
+
+  @Get("crm/tasks")
+  async listTasks(@Query("assigneeId") assigneeId?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.assist.listTasks(ctx!.tenantId!, assigneeId);
+  }
+
+  @Post("crm/tasks/:id/complete")
+  async completeTask(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.assist.completeTask(ctx!.tenantId!, id);
+  }
+
+  @Get("crm/leads/:id/copilot-brief")
+  async copilotBrief(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.assist.copilotBrief(ctx!.tenantId!, id);
   }
 }

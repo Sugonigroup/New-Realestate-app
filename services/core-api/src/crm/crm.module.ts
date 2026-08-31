@@ -4,11 +4,12 @@ import { CrmPipelineService } from "./pipeline.service.js";
 import { EngagementService } from "./engagement.service.js";
 import { CrmCommsService } from "./comms.service.js";
 import { CrmAnalyticsService } from "./analytics.service.js";
+import { CrmAssistService } from "./assist.service.js";
 import { CrmController } from "./crm.controller.js";
 
 @Module({
-  providers: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService],
+  providers: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService],
   controllers: [CrmController],
-  exports: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService],
+  exports: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService],
 })
 export class CrmModule {}

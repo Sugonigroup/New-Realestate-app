@@ -25,55 +25,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/_not-found": {
-      "initialStatus": 404,
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/_not-found",
-      "dataRoute": "/_not-found.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/contracts": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/contracts",
-      "dataRoute": "/contracts.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/assets": {
       "experimentalBypassFor": [
         {
@@ -98,7 +49,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/budgeting": {
+    "/contracts": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -111,8 +62,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/budgeting",
-      "dataRoute": "/budgeting.rsc",
+      "srcRoute": "/contracts",
+      "dataRoute": "/contracts.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -170,6 +121,30 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/budgeting": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/budgeting",
+      "dataRoute": "/budgeting.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/hr/recruitment": {
       "experimentalBypassFor": [
         {
@@ -194,7 +169,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/ops-support/risks": {
+    "/procurement/prs": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -207,8 +182,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/ops-support/risks",
-      "dataRoute": "/ops-support/risks.rsc",
+      "srcRoute": "/procurement/prs",
+      "dataRoute": "/procurement/prs.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -242,7 +217,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/procurement/prs": {
+    "/ops-support/risks": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -255,8 +230,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/procurement/prs",
-      "dataRoute": "/procurement/prs.rsc",
+      "srcRoute": "/ops-support/risks",
+      "dataRoute": "/ops-support/risks.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -305,6 +280,31 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/siteops",
       "dataRoute": "/siteops.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/_not-found": {
+      "initialStatus": 404,
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/_not-found",
+      "dataRoute": "/_not-found.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",

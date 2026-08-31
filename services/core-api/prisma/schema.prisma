@@ -1858,6 +1858,49 @@ model Communication {
   @@map("crm_communications")
 }
 
+// ── CRM Tasks & AI Recommendations (CRM-067, CRM-109/120/121) ───────────────
+
+model CrmTask {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  leadId    String?   @map("lead_id") @db.Uuid
+  oppNo     String?   @map("opp_no")
+  title     String
+  dueOn     DateTime  @map("due_on")
+  assigneeId String?  @map("assignee_id") @db.Uuid
+  createdFrom String  @default("manual") @map("created_from") // manual|ai_recommendation
+  recommendationId String? @map("recommendation_id") @db.Uuid
+  status    String    @default("open") // open|done|cancelled
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, status])
+  @@index([tenantId, assigneeId])
+  @@map("crm_tasks")
+}
+
+model CrmRecommendation {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  recType     String   @map("rec_type") // sla_at_risk|stalled_opportunity|inactive_lead|hot_lead_visit
+  targetType  String   @map("target_type") // lead|opportunity
+  targetId    String   @map("target_id") @db.Uuid
+  reason      String
+  evidence    Json     // supporting data snapshot
+  confidence  Int      // 0-100
+  impact      String   // high|medium|low
+  ownerUserId String?  @map("owner_user_id") @db.Uuid
+  dueOn       DateTime? @map("due_on")
+  status      String   @default("pending") // pending|accepted|rejected|expired
+  decidedBy   String?  @map("decided_by")
+  decidedAt   DateTime? @map("decided_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, recType, targetId, status])
+  @@index([tenantId, status])
+  @@map("crm_recommendations")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {
