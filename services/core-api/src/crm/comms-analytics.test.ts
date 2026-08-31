@@ -56,7 +56,11 @@ function fakePrisma() {
       }),
     },
     communication: {
-      create: vi.fn(async ({ data }: any) => { const r = { id: nid("m"), ...data }; db.comms.push(r); return { ...r }; }),
+      create: vi.fn(async ({ data }: any) => {
+        const r = { id: nid("m"), createdAt: new Date(Date.now() + db.comms.length), ...data };
+        db.comms.push(r);
+        return { ...r };
+      }),
       findFirst: vi.fn(async ({ where, orderBy }: any) => {
         let res = db.comms.filter(match(where));
         if (orderBy?.createdAt === "desc") res.sort((a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
