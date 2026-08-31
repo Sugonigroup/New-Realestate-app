@@ -9,12 +9,13 @@ import { CrmAssistService } from "./assist.service.js";
 import { CrmConfigService } from "./config.service.js";
 import { CrmDraftService } from "./draft.service.js";
 import { CrmLifecycleService } from "./lifecycle.service.js";
+import { CrmOrgService } from "./org.service.js";
 import { LlmGateway } from "../ai/gateway.js";
 import { CrmController } from "./crm.controller.js";
 
 @Module({ imports: [PermissionsModule],
-  providers: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, CrmLifecycleService, LlmGateway],
+  providers: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, CrmLifecycleService, CrmOrgService, LlmGateway],
   controllers: [CrmController],
-  exports: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, CrmLifecycleService],
+  exports: [CrmService, CrmPipelineService, EngagementService, CrmCommsService, CrmAnalyticsService, CrmAssistService, CrmConfigService, CrmDraftService, CrmLifecycleService, CrmOrgService],
 })
 export class CrmModule {}

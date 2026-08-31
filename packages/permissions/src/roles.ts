@@ -44,7 +44,7 @@ export const ROLE_TEMPLATES: Role[] = [
   R("store_manager", "Store Manager", ["inventory.*", "procurement.grn.create", "procurement.read", "inventory.writeoff.propose"]),
   R("finance_readonly", "Auditor", ["**.read", "audit.read", "reports.read"], { denied: ["**.create", "**.update", "**.delete", "**.approve", "**.release"] }),
   R("sales_head", "Sales Head", [
-    "sales.*", "crm.read", "marketing.read", "reports.read", "workflow.approve", "sales.discount.approve",
+    "sales.*", "crm.read", "marketing.read", "reports.read", "workflow.approve", "sales.discount.approve", "crm.lead.export",
   ], { denied: ["sales.paymentrun.*"] }),
   R("sales_manager", "Sales Manager", [
     "sales.read", "sales.inventory.read", "sales.hold.create", "sales.booking.create", "sales.discount.propose",

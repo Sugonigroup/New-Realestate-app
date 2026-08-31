@@ -432,13 +432,15 @@ model Lead {
   budgetPaise      BigInt?   @map("budget_paise")
   segment          String?
   language         String    @default("en")
-  status           String    @default("new") // new|contacted|qualified|visit_scheduled|visited|negotiation|booking|won|lost
+  status           String    @default("new") // new|contacted|qualified|visit_scheduled|visited|negotiation|booking|won|lost|dormant
   lostReason       String?   @map("lost_reason")
   score            Int       @default(0)
   assignedUserId   String?   @map("assigned_user_id") @db.Uuid
   slaRespondBy     DateTime? @map("sla_respond_by")
   firstRespondedAt DateTime? @map("first_responded_at")
   slaBreachedAt    DateTime? @map("sla_breached_at") // stamped once by the escalation sweep
+  dormantAt        DateTime? @map("dormant_at") // set by the dormancy sweep (CRM-023)
+  partnerRef       String?   @map("partner_ref") // channel partner code for partner-registered leads (CRM-091)
   dedupFlag        String?   @map("dedup_flag") // duplicate|linked (with matchLeadId)
   matchLeadId      String?   @map("match_lead_id") @db.Uuid
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -1752,6 +1754,45 @@ model CashForecastSnapshot {
 
   @@unique([tenantId, period])
   @@map("cash_forecast_snapshots")
+}
+
+// ── Organizations master (CRM-027/028) ──────────────────────────────────────
+
+model CrmOrganization {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  gstin     String?
+  orgType   String   @default("corporate") @map("org_type") // corporate|sme|proprietor|trust|huf
+  city      String?
+  website   String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  contacts CrmContact[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, orgType])
+  @@map("crm_organizations")
+}
+
+model CrmContact {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  fullName      String   @map("full_name")
+  email         String?
+  phone         String
+  role          String   @default("contact") // decision_maker|influencer|contact|finance
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  organization CrmOrganization? @relation(fields: [organizationId], references: [id])
+
+  @@unique([tenantId, phone])
+  @@index([tenantId, organizationId])
+  @@map("crm_contacts")
 }
 
 // ── CRM Automation Rules (CRM-008/012/071) ──────────────────────────────────

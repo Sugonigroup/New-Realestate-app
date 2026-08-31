@@ -15,6 +15,7 @@ import { CrmAssistService } from "./assist.service.js";
 import { CrmConfigService } from "./config.service.js";
 import { CrmDraftService } from "./draft.service.js";
 import { CrmLifecycleService } from "./lifecycle.service.js";
+import { CrmOrgService } from "./org.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -66,6 +67,7 @@ export class CrmController {
     private readonly config: CrmConfigService,
     private readonly drafts: CrmDraftService,
     private readonly lifecycle: CrmLifecycleService,
+    private readonly org: CrmOrgService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -100,9 +102,19 @@ export class CrmController {
     return this.crm.listLeads(ctx!.tenantId!, status);
   }
 
+  // NOTE: literal routes must be registered before :param routes (Nest matches in order).
+  @Get("crm/leads/export")
+  async exportLeads(@Query("status") status?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.export");
+    const ctx = getRequestContext();
+    const csv = await this.org.exportLeadsCsv(ctx!.tenantId!, status, ctx!.userId!);
+    return { csv, contentType: "text/csv", filename: `leads-${new Date().toISOString().slice(0, 10)}.csv` };
+  }
+
   @Get("crm/leads/:id")
   async lead(@Param("id") id: string): Promise<unknown> {
     this.permissions.require("crm.lead.read");
+    z.string().uuid().parse(id);
     const ctx = getRequestContext();
     return this.crm.getLead(ctx!.tenantId!, id);
   }
@@ -709,5 +721,93 @@ export class CrmController {
     this.permissions.require("crm.lead.update");
     const ctx = getRequestContext();
     return this.drafts.discardDraft(ctx!.tenantId!, id);
+  }
+
+  // ── P1 extensions: orgs, dormancy, export, partner (CRM-016/023/024/026/027/091) ──
+
+  @Post("crm/organizations")
+  async createOrganization(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        name: z.string().min(1),
+        gstin: z.string().optional(),
+        orgType: z.enum(["corporate", "sme", "proprietor", "trust", "huf"]).optional(),
+        city: z.string().optional(),
+        website: z.string().optional(),
+        notes: z.string().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.org.createOrganization(ctx!.tenantId!, dto);
+  }
+
+  @Get("crm/organizations")
+  async listOrganizations(@Query("orgType") orgType?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.org.listOrganizations(ctx!.tenantId!, orgType);
+  }
+
+  @Post("crm/contacts")
+  async addContact(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        organizationId: z.string().uuid().optional(),
+        fullName: z.string().min(1),
+        phone: z.string().min(8),
+        email: z.string().email().optional(),
+        role: z.enum(["decision_maker", "influencer", "contact", "finance"]).optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.org.addContact(ctx!.tenantId!, dto);
+  }
+
+  @Post("crm/automation/dormancy-sweep")
+  async dormancySweep(): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.org.sweepDormant(ctx!.tenantId!);
+  }
+
+  @Post("crm/leads/:id/reactivate")
+  async reactivateLead(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.org.reactivate(ctx!.tenantId!, id, ctx!.userId!);
+  }
+
+  @Post("crm/partners/leads")
+  async registerPartnerLead(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        partnerRef: z.string().min(1),
+        fullName: z.string().min(1),
+        phone: z.string().min(8),
+        email: z.string().email().optional(),
+        projectId: z.string().uuid().optional(),
+        budgetPaise: z.string().regex(/^\d+$/).optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.org.registerPartnerLead(ctx!.tenantId!, {
+      partnerRef: dto.partnerRef,
+      fullName: dto.fullName,
+      phone: dto.phone,
+      email: dto.email,
+      projectId: dto.projectId,
+      budgetPaise: dto.budgetPaise ? BigInt(dto.budgetPaise) : undefined,
+      partnerUserId: ctx!.userId!,
+    });
+  }
+
+  @Get("crm/partners/:partnerRef/credit")
+  async partnerCredit(@Param("partnerRef") partnerRef: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.org.partnerCredit(ctx!.tenantId!, partnerRef);
   }
 }
