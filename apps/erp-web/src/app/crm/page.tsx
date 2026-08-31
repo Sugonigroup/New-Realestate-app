@@ -1,8 +1,10 @@
-import { cookies } from "next/headers";
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-import { serverApi } from "@/lib/api";
+import { browserApi } from "@/lib/api";
 
 interface Lead {
   id: string;
@@ -15,6 +17,7 @@ interface Lead {
   firstRespondedAt: string | null;
 }
 
+// Client component: cell renderers can't cross the server→client RSC boundary.
 const columns: ColumnDef<Lead, unknown>[] = [
   { accessorKey: "fullName", header: "Name" },
   { accessorKey: "phone", header: "Phone" },
@@ -40,12 +43,16 @@ const columns: ColumnDef<Lead, unknown>[] = [
 ];
 
 /** Lead Inbox (U1, 04 §4): omnichannel list with SLA + score columns. */
-export default async function CrmInboxPage() {
-  const token = (await cookies()).get("access_token")?.value;
-  let leads: Lead[] = [];
-  try {
-    leads = (await serverApi(token).get<Lead[]>("/v1/crm/leads")) ?? [];
-  } catch { /* degraded */ }
+export default function CrmInboxPage() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    browserApi()
+      .get<Lead[]>("/v1/crm/leads")
+      .then(setLeads)
+      .catch((e: Error) => setError(e.message));
+  }, []);
 
   return (
     <main className="p-6">
@@ -55,7 +62,12 @@ export default async function CrmInboxPage() {
           Import CSV
         </Link>
       </div>
-      <DataTable<Lead> data={leads} columns={columns} />
+      {error && <p style={{ color: "var(--bo-danger)" }}>{error}</p>}
+      {leads.length === 0 && !error ? (
+        <p style={{ color: "var(--bo-text-muted)" }}>No leads yet — capture some via the webhook or CSV import.</p>
+      ) : (
+        <DataTable<Lead> data={leads} columns={columns} />
+      )}
     </main>
   );
 }

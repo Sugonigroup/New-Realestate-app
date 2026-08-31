@@ -2,33 +2,15 @@
 
 import { createContext, useContext, useMemo } from "react";
 import { ROLE_MAP, permissionMatches } from "@buildos/permissions";
+import type { AuthUser } from "./auth-core.js";
 
 /**
  * Auth context (U0): role claims from the (server-verified) session token drive
  * UI visibility only — every action is still enforced by the API (03 §2).
  */
 
-export interface AuthUser {
-  userId: string;
-  tenantId: string;
-  roles: string[];
-}
-
-export function parseJwtClaims(token: string | undefined | null): AuthUser | null {
-  if (!token) return null;
-  try {
-    const [, payload] = token.split(".");
-    const json = JSON.parse(Buffer.from(payload!, "base64url").toString("utf8")) as {
-      sub?: string;
-      tenant?: string;
-      roles?: string[];
-    };
-    if (!json.sub || !json.tenant) return null;
-    return { userId: json.sub, tenantId: json.tenant, roles: json.roles ?? [] };
-  } catch {
-    return null;
-  }
-}
+export { parseJwtClaims } from "./auth-core.js";
+export type { AuthUser } from "./auth-core.js";
 
 const AuthCtx = createContext<AuthUser | null>(null);
 
