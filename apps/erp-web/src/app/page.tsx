@@ -66,7 +66,7 @@ export default async function DashboardPage() {
           </span>
         </header>
         <section className="flex flex-wrap gap-4">
-          <StatCard label="Total Leads" value={funnel ? funnel.totalLeads : "—"} deltaPct={null} />
+          <StatCard label="Total Leads" value={funnel ? funnel.totalLeads : "—"} deltaPct={undefined} />
           <StatCard
             label="Weighted Pipeline"
             value={forecast ? <MoneyText paise={BigInt(forecast.weightedPipelinePaise ?? 0)} short /> : "—"}
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Site Visits"
             value={visits ? `${visits.completed}/${visits.totalVisits}` : "—"}
-            deltaPct={visits ? visits.visitToOpportunityPct : null}
+            deltaPct={visits ? visits.visitToOpportunityPct : undefined}
             tone="success"
           />
           <StatCard label="Lead → Won" value={funnel ? `${funnel.winPct}%` : "—"} tone="success" />
