@@ -1947,6 +1947,27 @@ model CrmCustomFieldValue {
   @@map("crm_custom_field_values")
 }
 
+// ── AI Drafts via LLM Gateway (CRM-112/113) ─────────────────────────────────
+
+model CrmDraft {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  leadId     String    @map("lead_id") @db.Uuid
+  channel    String    // email|whatsapp|sms
+  intent     String    // follow_up|visit_reminder|reactivation|festival_greeting|price_revision
+  body       String
+  model      String
+  promptHash String    @map("prompt_hash")
+  costPaise  BigInt    @default(0) @map("cost_paise")
+  status     String    @default("draft") // draft|approved|discarded
+  approvedBy String?   @map("approved_by")
+  sentCommId String?   @map("sent_comm_id") @db.Uuid // linked Communication after send
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, status])
+  @@map("crm_drafts")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {

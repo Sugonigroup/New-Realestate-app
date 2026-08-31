@@ -13,6 +13,7 @@ import { CrmCommsService } from "./comms.service.js";
 import { CrmAnalyticsService } from "./analytics.service.js";
 import { CrmAssistService } from "./assist.service.js";
 import { CrmConfigService } from "./config.service.js";
+import { CrmDraftService } from "./draft.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -62,6 +63,7 @@ export class CrmController {
     private readonly analytics: CrmAnalyticsService,
     private readonly assist: CrmAssistService,
     private readonly config: CrmConfigService,
+    private readonly drafts: CrmDraftService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -577,5 +579,42 @@ export class CrmController {
     this.permissions.require("crm.lead.read");
     const ctx = getRequestContext();
     return this.config.dataQualityScan(ctx!.tenantId!);
+  }
+
+  // ── AI drafts (CRM-112/113) ─────────────────────────────────────────────
+
+  @Post("crm/ai/drafts")
+  async createDraft(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        leadId: z.string().uuid(),
+        channel: z.enum(["email", "whatsapp", "sms"]),
+        intent: z.enum(["follow_up", "visit_reminder", "reactivation", "festival_greeting", "price_revision"]),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.drafts.draftCommunication(ctx!.tenantId!, dto);
+  }
+
+  @Get("crm/ai/drafts")
+  async listDrafts(@Query("status") status?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.drafts.listDrafts(ctx!.tenantId!, status ?? "draft");
+  }
+
+  @Post("crm/ai/drafts/:id/approve")
+  async approveDraft(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.drafts.approveAndSend(ctx!.tenantId!, id, ctx!.userId!);
+  }
+
+  @Post("crm/ai/drafts/:id/discard")
+  async discardDraft(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.drafts.discardDraft(ctx!.tenantId!, id);
   }
 }
