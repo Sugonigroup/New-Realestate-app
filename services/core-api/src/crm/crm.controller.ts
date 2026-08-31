@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getRequestContext } from "../common/request-context.js";
 import { PermissionsService } from "../permissions/permissions.service.js";
 import { CrmService, type RoutingContext } from "./crm.service.js";
+import { CrmPipelineService } from "./pipeline.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -50,6 +51,7 @@ export class CrmController {
 
   constructor(
     private readonly crm: CrmService,
+    private readonly pipeline: CrmPipelineService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -118,5 +120,137 @@ export class CrmController {
       .parse(body);
     const ctx = getRequestContext();
     return this.crm.addInteraction(ctx!.tenantId!, id, { ...dto, byUserId: ctx!.userId! });
+  }
+
+  // ── Opportunity pipeline (CRM-030..044) ─────────────────────────────────
+
+  @Post("crm/opportunities")
+  async createOpportunity(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        oppNo: z.string().min(1),
+        leadId: z.string().uuid(),
+        projectId: z.string().uuid(),
+        budgetPaise: z.string().regex(/^\d+$/).optional(),
+        financing: z.enum(["cash", "loan", "pre_approved"]).optional(),
+        expectedValuePaise: z.string().regex(/^\d+$/).optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.createOpportunity(ctx!.tenantId!, {
+      oppNo: dto.oppNo,
+      leadId: dto.leadId,
+      projectId: dto.projectId,
+      budgetPaise: dto.budgetPaise ? BigInt(dto.budgetPaise) : undefined,
+      financing: dto.financing,
+      expectedValuePaise: dto.expectedValuePaise ? BigInt(dto.expectedValuePaise) : undefined,
+    });
+  }
+
+  @Post("crm/opportunities/:oppNo/stage")
+  async moveStage(@Param("oppNo") oppNo: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({ to: z.enum(["prospect", "qualification", "unit_interest", "site_visit", "offer", "hold", "booking_pending"]) })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.moveStage(ctx!.tenantId!, oppNo, dto.to);
+  }
+
+  @Post("crm/opportunities/:oppNo/lost")
+  async markLost(@Param("oppNo") oppNo: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ lostReason: z.string().min(1), competitor: z.string().optional() }).parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.markLost(ctx!.tenantId!, oppNo, dto.lostReason, dto.competitor);
+  }
+
+  @Post("crm/opportunities/:oppNo/win")
+  async handoffToBooking(@Param("oppNo") oppNo: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ bookingId: z.string().uuid() }).parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.handoffToBooking(ctx!.tenantId!, oppNo, dto.bookingId);
+  }
+
+  @Post("crm/opportunities/:oppNo/unit-interest")
+  async addUnitInterest(@Param("oppNo") oppNo: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        unitId: z.string().uuid().optional(),
+        towerPref: z.string().optional(),
+        floorPref: z.number().int().optional(),
+        configType: z.string().optional(),
+        areaPrefSqm: z.number().positive().optional(),
+        budgetPaise: z.string().regex(/^\d+$/).optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.addUnitInterest(ctx!.tenantId!, oppNo, {
+      ...dto,
+      budgetPaise: dto.budgetPaise ? BigInt(dto.budgetPaise) : undefined,
+    });
+  }
+
+  @Get("crm/analytics/pipeline-forecast")
+  async forecast(@Query("projectId") projectId?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.pipeline.forecast(ctx!.tenantId!, projectId);
+  }
+
+  @Get("crm/analytics/visit-funnel")
+  async visitFunnel(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.pipeline.visitFunnel(ctx!.tenantId!);
+  }
+
+  // ── Lead assignment history (CRM-008/011) ───────────────────────────────
+
+  @Post("crm/leads/:id/assign")
+  async assignLead(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.assign");
+    const dto = z
+      .object({
+        toUserId: z.string().uuid(),
+        reason: z.enum(["rule", "manual", "reassign", "round_robin", "bulk"]).optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.assignLead(ctx!.tenantId!, id, dto.toUserId, ctx!.userId!, dto.reason ?? "manual");
+  }
+
+  @Get("crm/leads/:id/assignment-history")
+  async assignmentHistory(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.pipeline.assignmentHistory(ctx!.tenantId!, id);
+  }
+
+  // ── Site visit lifecycle (CRM-045..051) ─────────────────────────────────
+
+  @Post("crm/site-visits/:id/confirm")
+  async confirmVisit(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.pipeline.confirmVisit(ctx!.tenantId!, id);
+  }
+
+  @Post("crm/site-visits/:id/complete")
+  async completeVisit(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ outcome: z.string().min(1), feedback: z.string().max(2000).optional() }).parse(body);
+    const ctx = getRequestContext();
+    return this.pipeline.completeVisit(ctx!.tenantId!, id, dto.outcome, dto.feedback);
+  }
+
+  @Post("crm/site-visits/:id/no-show")
+  async markNoShow(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.pipeline.markNoShow(ctx!.tenantId!, id);
   }
 }

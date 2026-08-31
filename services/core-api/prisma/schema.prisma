@@ -473,7 +473,11 @@ model SiteVisit {
   leadId      String    @map("lead_id") @db.Uuid
   projectId   String?   @map("project_id") @db.Uuid
   scheduledAt DateTime  @map("scheduled_at")
-  status      String    @default("scheduled") // scheduled|done|no_show|cancelled
+  status      String    @default("scheduled") // scheduled|confirmed|done|no_show|cancelled
+  outcome     String?   // interested|negotiating|not_interested|revisit
+  feedback    String?
+  confirmedAt DateTime? @map("confirmed_at")
+  completedAt DateTime? @map("completed_at")
   checkedInAt DateTime? @map("checked_in_at")
   geoLat      Decimal?  @map("geo_lat") @db.Decimal(10, 7)
   geoLng      Decimal?  @map("geo_lng") @db.Decimal(10, 7)
@@ -481,6 +485,66 @@ model SiteVisit {
 
   @@index([tenantId, scheduledAt])
   @@map("site_visits")
+}
+
+// ── CRM Opportunity pipeline CRM-030..044 ───────────────────────────────────
+
+model Opportunity {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  oppNo             String    @map("opp_no")
+  leadId            String    @map("lead_id") @db.Uuid
+  projectId         String    @map("project_id") @db.Uuid
+  stage             String    @default("prospect") // prospect|qualification|unit_interest|site_visit|offer|hold|booking_pending|won|lost
+  probabilityPct    Int       @default(10) @map("probability_pct")
+  expectedValuePaise BigInt   @default(0) @map("expected_value_paise")
+  budgetPaise       BigInt?   @map("budget_paise")
+  financing         String    @default("loan") // cash|loan|pre_approved
+  lostReason        String?   @map("lost_reason")
+  bookingId         String?   @map("booking_id") @db.Uuid // set on booking handoff (CRM-095)
+  assignedUserId    String?   @map("assigned_user_id") @db.Uuid
+  stalledSince      DateTime? @map("stalled_since")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  unitInterests OpportunityUnitInterest[]
+
+  @@unique([tenantId, oppNo])
+  @@index([tenantId, stage])
+  @@index([tenantId, leadId])
+  @@map("crm_opportunities")
+}
+
+model OpportunityUnitInterest {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  opportunityId String @map("opportunity_id") @db.Uuid
+  unitId       String? @map("unit_id") @db.Uuid
+  towerPref    String? @map("tower_pref")
+  floorPref    Int?    @map("floor_pref")
+  configType   String? @map("config_type") // 1bhk|2bhk|3bhk|4bhk|villa|plot
+  areaPrefSqm  Decimal? @map("area_pref_sqm") @db.Decimal(12, 2)
+  budgetPaise  BigInt? @map("budget_paise")
+  status       String  @default("active") // active|dropped|converted
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id])
+
+  @@index([tenantId, opportunityId])
+  @@map("crm_opportunity_unit_interests")
+}
+
+model LeadAssignmentLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  leadId     String   @map("lead_id") @db.Uuid
+  fromUserId String?  @map("from_user_id") @db.Uuid
+  toUserId   String   @map("to_user_id") @db.Uuid
+  reason     String   // rule|manual|reassign|round_robin|bulk
+  assignedBy String   @map("assigned_by")
+  at         DateTime @map("assigned_at")
+
+  @@index([tenantId, leadId])
+  @@map("crm_lead_assignment_logs")
 }
 
 // ── Sales & inventory (Phase 1 WP-1C, 01 §M3) ───────────────────────────────
