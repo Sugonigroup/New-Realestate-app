@@ -118,6 +118,12 @@
       "namedRegex": "^/crm(?:/)?$"
     },
     {
+      "page": "/crm/engagement",
+      "regex": "^/crm/engagement(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/crm/engagement(?:/)?$"
+    },
+    {
       "page": "/finance/collections",
       "regex": "^/finance/collections(?:/)?$",
       "routeKeys": {},
