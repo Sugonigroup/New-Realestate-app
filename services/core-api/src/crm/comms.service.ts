@@ -132,18 +132,18 @@ export class CrmCommsService {
     providerMessageId?: string;
   }) {
     let person = null;
-    if (input.fromPhone) {
-      const lead = await this.prisma.lead.findFirst({ where: { tenantId, phone: input.fromPhone } });
-      if (lead) {
-        person = await this.prisma.relationshipPerson.findFirst({ where: { tenantId, leadId: lead.id } });
+    // Duplicate-review flow may store multiple rows per phone/email; resolve to
+    // the candidate that actually has a linked relationship person (CRM-103).
+    const resolve = async (where: object) => {
+      const candidates = await this.prisma.lead.findMany({ where: { tenantId, ...where } });
+      for (const lead of candidates) {
+        const p = await this.prisma.relationshipPerson.findFirst({ where: { tenantId, leadId: lead.id } });
+        if (p) return p;
       }
-    }
-    if (!person && input.fromEmail) {
-      const lead = await this.prisma.lead.findFirst({ where: { tenantId, email: input.fromEmail } });
-      if (lead) {
-        person = await this.prisma.relationshipPerson.findFirst({ where: { tenantId, leadId: lead.id } });
-      }
-    }
+      return null;
+    };
+    if (input.fromPhone) person = await resolve({ phone: input.fromPhone });
+    if (!person && input.fromEmail) person = await resolve({ email: input.fromEmail });
     if (!person) throw new NotFoundException("no known identity for inbound message");
 
     // Find existing thread: latest outbound communication to this person on this channel

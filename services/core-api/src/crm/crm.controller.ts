@@ -40,14 +40,33 @@ const webhookDto = z.object({
 @ApiTags("crm")
 @Controller()
 export class CrmController {
-  /** Routing config comes from tenant settings (admin UI lands in WP-0D screens). */
-  private routingFor(tenantId: string): RoutingContext {
-    void tenantId;
+  /**
+   * Routing config: persisted assignment rules (CRM-071) take precedence; the
+   * static fallback assigns to ROLE QUEUES only — never to placeholder user ids
+   * (assigned_user_id is a real UUID column; role queues resolve at assignment).
+   */
+  private async routingFor(tenantId: string): Promise<RoutingContext> {
+    const dbRules = await this.lifecycle.listAssignmentRules(tenantId);
+    if (dbRules.length > 0) {
+      return {
+        rules: dbRules.map((r) => {
+          const c = r.criteria as { projectId?: string; segment?: string; language?: string };
+          return {
+            projectId: c.projectId,
+            segment: c.segment,
+            language: c.language,
+            assignToUsers: (r.assignToUsers as string[]) ?? [],
+            assignToRole: "sales_executive",
+          };
+        }),
+        userLoad: this.load,
+        lastAssigned: this.lastAssigned,
+      };
+    }
     return {
       rules: [
         { segment: "commercial", assignToRole: "sales_manager" },
-        { language: "hi", assignToUsers: ["exec-hindi-1", "exec-hindi-2"] },
-        { assignToUsers: ["exec-1", "exec-2", "exec-3"], assignToRole: "sales_executive" },
+        { assignToRole: "sales_executive" },
       ],
       userLoad: this.load,
       lastAssigned: this.lastAssigned,
@@ -82,7 +101,7 @@ export class CrmController {
     const dto = webhookDto.parse(JSON.parse(raw));
     const tenantId = process.env.LEAD_WEBHOOK_TENANT_ID;
     if (!tenantId) throw new BadRequestException({ title: "Webhook tenant not configured" });
-    return this.crm.ingest({ tenantId, ...dto, budgetPaise: undefined }, this.routingFor(tenantId));
+    return this.crm.ingest({ tenantId, ...dto, budgetPaise: undefined }, await this.routingFor(tenantId));
   }
 
   @Post("crm/leads/import")
@@ -92,7 +111,7 @@ export class CrmController {
       .object({ csv: z.string().min(1), projectId: z.string().uuid().optional() })
       .parse(body);
     const ctx = getRequestContext();
-    return this.crm.importCsv(ctx!.tenantId!, csv, this.routingFor(ctx!.tenantId!), { projectId });
+    return this.crm.importCsv(ctx!.tenantId!, csv, await this.routingFor(ctx!.tenantId!), { projectId });
   }
 
   @Get("crm/leads")
@@ -109,6 +128,20 @@ export class CrmController {
     const ctx = getRequestContext();
     const csv = await this.org.exportLeadsCsv(ctx!.tenantId!, status, ctx!.userId!);
     return { csv, contentType: "text/csv", filename: `leads-${new Date().toISOString().slice(0, 10)}.csv` };
+  }
+
+  @Get("crm/work-queue")
+  async workQueue(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.assist.workQueue(ctx!.tenantId!, ctx!.userId!);
+  }
+
+  @Get("crm/sales-diary")
+  async salesDiary(): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.assist.salesDiary(ctx!.tenantId!, ctx!.userId!);
   }
 
   @Get("crm/leads/:id")

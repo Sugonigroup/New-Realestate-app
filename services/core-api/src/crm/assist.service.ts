@@ -205,6 +205,78 @@ export class CrmAssistService {
   // ── Read-only copilot brief (CRM-120) ───────────────────────────────────
 
   /** Deterministic lead brief — summarizes state for the human operator. */
+  // ── Sales diary & site-sales work queue (RECRM-016/017) ────────────────
+
+  /** Prioritized action queue for a sales user: SLA first, then tasks, then reactivations. */
+  async workQueue(tenantId: string, userId: string, now: Date = new Date()) {
+    const atRisk = await this.prisma.lead.findMany({
+      where: {
+        tenantId, assignedUserId: userId, status: { in: ["new", "contacted"] },
+        slaRespondBy: { not: null, lte: new Date(now.getTime() + 2 * 3600_000) },
+      },
+    });
+    const dormant = await this.prisma.lead.findMany({
+      where: { tenantId, assignedUserId: userId, status: "dormant" },
+    });
+    const tasks = await this.prisma.crmTask.findMany({
+      where: { tenantId, assigneeId: userId, status: "open", dueOn: { lte: new Date(now.getTime() + DAY) } },
+      orderBy: { dueOn: "asc" },
+    });
+
+    const items: Array<{ kind: string; priority: number; ref: string; title: string; dueOn?: Date }> = [];
+    for (const l of atRisk) {
+      items.push({
+        kind: "sla", priority: 0, ref: l.id as string,
+        title: `Call ${l.fullName} — SLA ${l.slaRespondBy && new Date(l.slaRespondBy as unknown as string) < now ? "BREACHED" : "at risk"}`,
+        dueOn: new Date(l.slaRespondBy as unknown as string),
+      });
+    }
+    for (const t of tasks) {
+      items.push({ kind: "task", priority: 1, ref: t.id as string, title: t.title as string, dueOn: t.dueOn as Date });
+    }
+    for (const l of dormant) {
+      items.push({ kind: "reactivate", priority: 2, ref: l.id as string, title: `Reactivate ${l.fullName} (dormant)` });
+    }
+    items.sort((a, b) => a.priority - b.priority || (a.dueOn?.getTime() ?? Infinity) - (b.dueOn?.getTime() ?? Infinity));
+    return { userId, queue: items, slaCount: atRisk.length, taskCount: tasks.length, dormantCount: dormant.length };
+  }
+
+  /** Sales diary (RECRM-016): today's calls, visits, tasks completed/open, for one user. */
+  async salesDiary(tenantId: string, userId: string, now: Date = new Date()) {
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayEnd = new Date(dayStart.getTime() + DAY);
+    const leads = await this.prisma.lead.findMany({
+      where: { tenantId, assignedUserId: userId },
+      include: { interactions: true },
+    });
+    const calls: Array<{ leadId: string; leadName: string; disposition: string | null; at: Date }> = [];
+    for (const l of leads) {
+      for (const i of l.interactions) {
+        const at = new Date(i.createdAt as unknown as string);
+        if (i.type === "call" && at >= dayStart && at < dayEnd) {
+          calls.push({ leadId: l.id as string, leadName: l.fullName as string, disposition: (i.disposition as string) ?? null, at });
+        }
+      }
+    }
+    const visits = await this.prisma.siteVisit.findMany({
+      where: { tenantId, scheduledAt: { gte: dayStart, lt: dayEnd } },
+    });
+    const tasksDone = await this.prisma.crmTask.findMany({
+      where: { tenantId, assigneeId: userId, status: "done", completedAt: { gte: dayStart, lt: dayEnd } },
+    });
+    const tasksOpen = await this.prisma.crmTask.findMany({
+      where: { tenantId, assigneeId: userId, status: "open", dueOn: { lt: dayEnd } },
+    });
+    return {
+      date: dayStart.toISOString().slice(0, 10),
+      calls: calls.sort((a, b) => a.at.getTime() - b.at.getTime()),
+      callCount: calls.length,
+      visitsToday: visits.length,
+      tasksCompleted: tasksDone.length,
+      tasksOpen: tasksOpen.length,
+    };
+  }
+
   async copilotBrief(tenantId: string, leadId: string) {
     const lead = await this.prisma.lead.findFirst({
       where: { tenantId, id: leadId },
