@@ -1010,6 +1010,82 @@ model PayrollRun {
   @@map("payroll_runs")
 }
 
+// ── HR Employee Lifecycle HR-01 ─────────────────────────────────────────────
+
+model JobRequisition {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  reqNo       String    @map("req_no")
+  position    String
+  department  String
+  headcount   Int       @default(1)
+  projectId   String?   @map("project_id") @db.Uuid
+  requestedBy String    @map("requested_by")
+  status      String    @default("draft") // draft|approved|open|filled|cancelled
+  approvedBy  String?   @map("approved_by")
+  approvedAt  DateTime? @map("approved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  candidates JobCandidate[]
+
+  @@unique([tenantId, reqNo])
+  @@index([tenantId, status])
+  @@map("job_requisitions")
+}
+
+model JobCandidate {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  requisitionId String @map("requisition_id") @db.Uuid
+  name       String
+  phone      String
+  email      String?
+  source     String   // portal|referral|agency|walk_in
+  stage      String   @default("applied") // applied|screening|interview|offer_sent|offer_accepted|joined|rejected
+  rating     Int?     // 1-5 interview rating
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  requisition JobRequisition @relation(fields: [requisitionId], references: [id])
+  offers      JobOffer[]
+
+  @@index([tenantId, requisitionId])
+  @@map("job_candidates")
+}
+
+model JobOffer {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  offerNo        String    @map("offer_no")
+  candidateId    String    @map("candidate_id") @db.Uuid
+  offeredCtcPaise BigInt   @map("offered_ctc_paise")
+  joiningDate    DateTime? @map("joining_date")
+  status         String    @default("draft") // draft|sent|accepted|declined|withdrawn
+  validUntil     DateTime  @map("valid_until")
+  respondedAt    DateTime? @map("responded_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  candidate JobCandidate @relation(fields: [candidateId], references: [id])
+
+  @@unique([tenantId, offerNo])
+  @@map("job_offers")
+}
+
+model EmployeeExit {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  employeeId      String    @map("employee_id") @db.Uuid
+  reason          String    // resignation|termination|absconding|retirement
+  noticeDays      Int       @default(30) @map("notice_days")
+  lastWorkingDay  DateTime  @map("last_working_day")
+  duesSettledPaise BigInt   @default(0) @map("dues_settled_paise") // full & final settlement
+  status          String    @default("initiated") // initiated|cleared|exited
+  clearedBy       String?   @map("cleared_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([tenantId, status])
+  @@map("employee_exits")
+}
+
 model Contractor {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId      String    @map("tenant_id") @db.Uuid
