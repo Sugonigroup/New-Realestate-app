@@ -8,6 +8,7 @@ import { getRequestContext } from "../common/request-context.js";
 import { PermissionsService } from "../permissions/permissions.service.js";
 import { CrmService, type RoutingContext } from "./crm.service.js";
 import { CrmPipelineService } from "./pipeline.service.js";
+import { EngagementService } from "./engagement.service.js";
 
 /** HMAC verification for lead webhooks (05 §7: signed ingestion, replay-safe ids). */
 export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
@@ -52,6 +53,7 @@ export class CrmController {
   constructor(
     private readonly crm: CrmService,
     private readonly pipeline: CrmPipelineService,
+    private readonly engagement: EngagementService,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -252,5 +254,97 @@ export class CrmController {
     this.permissions.require("crm.lead.update");
     const ctx = getRequestContext();
     return this.pipeline.markNoShow(ctx!.tenantId!, id);
+  }
+
+  // ── Vishesh Engagement Engine (§28.18) ──────────────────────────────────
+
+  @Post("crm/engagement/persons")
+  async registerPerson(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        personType: z.enum(["lead", "customer", "contact", "partner", "employee"]),
+        displayName: z.string().min(1),
+        preferredLanguage: z.string().optional(),
+        preferredChannel: z.enum(["whatsapp", "email", "sms", "call"]).optional(),
+        consentStatus: z.enum(["granted", "revoked", "unknown"]).optional(),
+        customerId: z.string().uuid().optional(),
+        leadId: z.string().uuid().optional(),
+        partnerId: z.string().uuid().optional(),
+        employeeId: z.string().uuid().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.engagement.registerPerson(ctx!.tenantId!, dto);
+  }
+
+  @Post("crm/engagement/persons/:personId/consent")
+  async setConsent(@Param("personId") personId: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ status: z.enum(["granted", "revoked"]) }).parse(body);
+    const ctx = getRequestContext();
+    return this.engagement.setConsent(ctx!.tenantId!, personId, dto.status);
+  }
+
+  @Post("crm/engagement/events")
+  async addEvent(@Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z
+      .object({
+        personId: z.string().uuid(),
+        eventType: z.string().min(1),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+        verified: z.boolean().optional(),
+        visibility: z.enum(["public", "private"]).optional(),
+        customEventKey: z.string().optional(),
+      })
+      .parse(body);
+    const ctx = getRequestContext();
+    return this.engagement.addEvent(ctx!.tenantId!, dto.personId, dto);
+  }
+
+  @Post("crm/engagement/events/:id/verify")
+  async verifyEvent(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ verificationSource: z.string().min(1) }).parse(body);
+    const ctx = getRequestContext();
+    return this.engagement.verifyEvent(ctx!.tenantId!, id, dto.verificationSource);
+  }
+
+  @Get("crm/engagement/upcoming")
+  async upcoming(@Query("days") days: string): Promise<unknown> {
+    this.permissions.require("crm.lead.read");
+    const ctx = getRequestContext();
+    return this.engagement.upcoming(ctx!.tenantId!, Number(days ?? "7"));
+  }
+
+  @Post("crm/engagement/plan")
+  async planEngagements(@Query("hour") hour?: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.engagement.planEngagements(ctx!.tenantId!, new Date(), hour ? Number(hour) : 11);
+  }
+
+  @Post("crm/engagement/executions/:id/approve")
+  async approveExecution(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("workflow.approve");
+    const ctx = getRequestContext();
+    return this.engagement.approveExecution(ctx!.tenantId!, id, ctx!.userId!);
+  }
+
+  @Post("crm/engagement/executions/:id/suppress")
+  async suppressExecution(@Param("id") id: string, @Body() body: unknown): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const dto = z.object({ reason: z.string().min(1) }).parse(body);
+    const ctx = getRequestContext();
+    return this.engagement.suppressExecution(ctx!.tenantId!, id, dto.reason);
+  }
+
+  @Post("crm/engagement/executions/:id/execute")
+  async executeExecution(@Param("id") id: string): Promise<unknown> {
+    this.permissions.require("crm.lead.update");
+    const ctx = getRequestContext();
+    return this.engagement.executeExecution(ctx!.tenantId!, id);
   }
 }

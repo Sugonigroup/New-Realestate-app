@@ -1752,6 +1752,88 @@ model CashForecastSnapshot {
   @@map("cash_forecast_snapshots")
 }
 
+// ── Vishesh Engagement Engine §28 ───────────────────────────────────────────
+
+model RelationshipPerson {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  personType        String   @map("person_type") // lead|customer|contact|partner|employee
+  customerId        String?  @map("customer_id") @db.Uuid
+  leadId            String?  @map("lead_id") @db.Uuid
+  partnerId         String?  @map("partner_id") @db.Uuid
+  employeeId        String?  @map("employee_id") @db.Uuid
+  displayName       String   @map("display_name")
+  preferredLanguage String   @default("en") @map("preferred_language")
+  preferredChannel  String   @default("whatsapp") @map("preferred_channel") // whatsapp|email|sms|call
+  consentStatus     String   @default("unknown") @map("consent_status") // granted|revoked|unknown
+  city              String?
+  state             String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  events RelationshipEvent[]
+
+  @@index([tenantId, personType])
+  @@map("relationship_persons")
+}
+
+model RelationshipEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  personId      String   @map("person_id") @db.Uuid
+  eventType     String   @map("event_type") // BIRTHDAY|WEDDING_ANNIVERSARY|BOOKING_ANNIVERSARY|POSSESSION_ANNIVERSARY|FESTIVAL|CUSTOM_VISHESH|…
+  customEventKey String? @map("custom_event_key")
+  month         Int      // 1-12
+  day           Int      // 1-31 (29 Feb clamps to 28 on non-leap years)
+  isRecurring   Boolean  @default(true) @map("is_recurring")
+  visibility    String   @default("public") // public|private
+  verified      Boolean  @default(false)
+  notes         String?
+  active        Boolean  @default(true)
+
+  person RelationshipPerson @relation(fields: [personId], references: [id])
+
+  @@index([tenantId, personId])
+  @@index([tenantId, eventType])
+  @@map("relationship_events")
+}
+
+model EngagementPolicy {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String  @map("tenant_id") @db.Uuid
+  eventType       String  @map("event_type") // event type or CUSTOM:<key>
+  audience        String  // leads|customers|partners|employees|all
+  leadDays        Int     @map("lead_days")
+  allowedChannels Json    @map("allowed_channels") // ["whatsapp","email"]
+  quietStartHour  Int     @default(21) @map("quiet_start_hour")
+  quietEndHour    Int     @default(8) @map("quiet_end_hour")
+  maxPerOccurrence Int    @default(1) @map("max_per_occurrence")
+  approvalRequired Boolean @default(false) @map("approval_required")
+  active          Boolean @default(true)
+
+  @@unique([tenantId, eventType, audience])
+  @@map("engagement_policies")
+}
+
+model EngagementExecution {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String    @map("tenant_id") @db.Uuid
+  personId         String    @map("person_id") @db.Uuid
+  eventId          String    @map("event_id") @db.Uuid
+  occurrenceKey    String    @map("occurrence_key") // e.g. "BIRTHDAY:2027-02-28"
+  channel          String
+  templateKey      String?   @map("template_key")
+  plannedAt        DateTime  @map("planned_at")
+  status           String    @default("planned") // planned|approved|sent|suppressed|failed
+  suppressionReason String?  @map("suppression_reason")
+  approvedBy       String?   @map("approved_by")
+  sentAt           DateTime? @map("sent_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@unique([tenantId, eventId, occurrenceKey, channel])
+  @@index([tenantId, status])
+  @@map("engagement_executions")
+}
+
 // ── Compliance persistence (Phase 4) ────────────────────────────────────────
 
 model StatutoryFiling {
