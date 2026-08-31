@@ -3,5 +3,5 @@ import { PermissionsModule } from "../permissions/permissions.module.js";
 import { PrismaModule } from "../prisma/prisma.module.js";
 import { AiController } from "./ai.controller.js";
 
-@Module({ imports: [PermissionsModule], imports: [PrismaModule], controllers: [AiController] })
+@Module({ imports: [PrismaModule, PermissionsModule], controllers: [AiController] })
 export class AiModule {}
