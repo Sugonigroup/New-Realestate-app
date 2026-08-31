@@ -4,6 +4,12 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module.js";
 
 async function bootstrap(): Promise<void> {
+  // Money values are BigInt paise throughout the domain; JSON-serialize them as
+  // strings (our API convention) instead of crashing JSON.stringify (05 §3).
+  (BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function (this: bigint) {
+    return this.toString();
+  };
+
   // rawBody: needed for webhook HMAC verification (exact bytes signed)
   const app = await NestFactory.create(AppModule, { bufferLogs: false, rawBody: true });
   app.setGlobalPrefix("v1");
