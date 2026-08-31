@@ -9,7 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [tenantSlug, setTenant] = useState("shree-developers");
   const [email, setEmail] = useState("admin@shree.example");
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("Buildos@demo1");
   const [mfaCode, setMfa] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -50,6 +50,10 @@ export default function LoginPage() {
         <h1 className="mb-1 text-xl font-semibold">BuildOS ERP</h1>
         <p className="mb-6 text-sm" style={{ color: "var(--bo-text-muted)" }}>
           Sign in to your organization
+          <br />
+          <span className="text-xs">
+            Demo MFA: run <code>bash scripts/demo-code.sh</code> in the repo (rotates every 30s)
+          </span>
         </p>
         <label className="mb-1 block text-xs uppercase tracking-wide" style={{ color: "var(--bo-text-muted)" }}>
           Organization
