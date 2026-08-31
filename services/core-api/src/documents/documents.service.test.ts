@@ -79,7 +79,7 @@ describe("DocumentsService (WP-0F)", () => {
   it("stores content on disk at a tenant-scoped key and records version metadata", async () => {
     const { prisma, db } = fakePrisma();
     const storage = new LocalFsAdapter(dir);
-    const svc = new DocumentsService(prisma as never, storage, permissions);
+    const svc = new DocumentsService(prisma as never, storage, permissions as never);
 
     const out = await upload(svc);
     expect(out.version).toBe(1);
@@ -95,7 +95,7 @@ describe("DocumentsService (WP-0F)", () => {
   it("re-upload creates version 2 with a distinct key; old version still downloadable", async () => {
     const { prisma, db } = fakePrisma();
     const storage = new LocalFsAdapter(dir);
-    const svc = new DocumentsService(prisma as never, storage, permissions);
+    const svc = new DocumentsService(prisma as never, storage, permissions as never);
 
     const v1 = await upload(svc);
     const v2 = await svc.upload({
@@ -115,7 +115,7 @@ describe("DocumentsService (WP-0F)", () => {
 
   it("checks permissions with the project scope and propagates denial", async () => {
     const { prisma } = fakePrisma();
-    const svc = new DocumentsService(prisma as never, new LocalFsAdapter(dir), permissions);
+    const svc = new DocumentsService(prisma as never, new LocalFsAdapter(dir), permissions as never);
     await upload(svc);
     expect(permissions.require).toHaveBeenCalledWith("docs.create", { projectId: "proj-1" });
 
@@ -129,7 +129,7 @@ describe("DocumentsService (WP-0F)", () => {
   it("rejects path traversal in folder paths and storage keys", async () => {
     const { prisma } = fakePrisma();
     const storage = new LocalFsAdapter(dir);
-    const svc = new DocumentsService(prisma as never, storage, permissions);
+    const svc = new DocumentsService(prisma as never, storage, permissions as never);
     await expect(
       svc.upload({
         tenantId: TENANT, userId: USER, folderPath: "/../etc", name: "x",
@@ -142,7 +142,7 @@ describe("DocumentsService (WP-0F)", () => {
   it("soft delete hides the document but keeps versions on disk (7y retention)", async () => {
     const { prisma, db } = fakePrisma();
     const storage = new LocalFsAdapter(dir);
-    const svc = new DocumentsService(prisma as never, storage, permissions);
+    const svc = new DocumentsService(prisma as never, storage, permissions as never);
     const up = await upload(svc);
     await svc.softDelete(TENANT, USER, up.documentId);
     expect(db.documents[0]!.deletedAt).toBeDefined();

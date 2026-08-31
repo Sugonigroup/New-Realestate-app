@@ -1,6 +1,7 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { PermissionsService } from "../permissions/permissions.service.js";
 import { sha256, type StoragePort } from "./storage.js";
 
 export const STORAGE_PORT = "StoragePort";
@@ -27,7 +28,7 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
-    private readonly permissions: { require: (p: string, resource?: { projectId?: string }) => unknown },
+    private readonly permissions: PermissionsService,
   ) {}
 
   async upload(input: UploadInput): Promise<{ documentId: string; version: number; sha256: string }> {

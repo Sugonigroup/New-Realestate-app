@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { PermissionsModule } from "../permissions/permissions.module.js";
 import { FinanceService } from "./finance.service.js";
 import { EscrowService } from "./escrow.service.js";
 import { GlService } from "./gl.service.js";
@@ -11,7 +12,7 @@ import { JournalAutomationService } from "./journal-automation.service.js";
 import { FinanceController } from "./finance.controller.js";
 import { GlController } from "./gl.controller.js";
 
-@Module({
+@Module({ imports: [PermissionsModule],
   providers: [
     FinanceService,
     EscrowService,

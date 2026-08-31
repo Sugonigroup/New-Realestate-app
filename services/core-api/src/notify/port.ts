@@ -17,6 +17,8 @@ export interface ProviderResult {
   failureReason?: string;
 }
 
+export const NOTIFY_PORT = "NotificationPort";
+
 export interface NotificationPort {
   readonly name: string;
   readonly supports: Channel[];

@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { renderTemplate } from "./template.js";
 import { canSend, type Channel, type Purpose } from "./consent.js";
 import { shouldDefer, DEFAULT_QUIET, type Severity } from "./quiet-hours.js";
-import type { NotificationPort } from "./port.js";
+import { NOTIFY_PORT, type NotificationPort } from "./port.js";
 import { advanceJourney, type JourneyDefinition, type JourneyRunState } from "./journey.js";
 
 const QUIET_DEFER_MINUTES = 60;
@@ -29,7 +29,7 @@ export interface SendInput {
 export class NotificationService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly adapter: NotificationPort,
+    @Inject(NOTIFY_PORT) private readonly adapter: NotificationPort,
   ) {}
 
   async send(input: SendInput): Promise<{ messageId: string; status: string }> {

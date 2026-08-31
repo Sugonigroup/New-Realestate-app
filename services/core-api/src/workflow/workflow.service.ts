@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { Money } from "@buildos/money-utils";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
@@ -44,7 +44,7 @@ export interface ActInput {
 export class WorkflowService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly matrix: MatrixEntry[] = SEED_MATRIX,
+    @Optional() private readonly matrix: MatrixEntry[] = SEED_MATRIX,
   ) {}
 
   async start(input: StartInput): Promise<{ instanceId: string; taskId: string; approverRole: string }> {
