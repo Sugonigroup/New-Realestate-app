@@ -7,6 +7,7 @@ import { BankService } from "./bank.service.js";
 import { AdjustmentNoteService } from "./adjustment-note.service.js";
 import { AgingDunningService } from "./aging-dunning.service.js";
 import { EInvoiceService } from "./einvoice.service.js";
+import { JournalAutomationService } from "./journal-automation.service.js";
 import { FinanceController } from "./finance.controller.js";
 import { GlController } from "./gl.controller.js";
 
@@ -20,6 +21,7 @@ import { GlController } from "./gl.controller.js";
     AdjustmentNoteService,
     AgingDunningService,
     EInvoiceService,
+    JournalAutomationService,
   ],
   controllers: [FinanceController, GlController],
   exports: [
@@ -31,6 +33,7 @@ import { GlController } from "./gl.controller.js";
     AdjustmentNoteService,
     AgingDunningService,
     EInvoiceService,
+    JournalAutomationService,
   ],
 })
 export class FinanceModule {}

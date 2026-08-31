@@ -1660,8 +1660,66 @@ model DsarRequest {
 
 // ── General Ledger (P0, 05 Finance/Accounting) ──────────────────────────────
 
-model Account {
+// ── Journal Templates & Recurring Journals FIN-03 ───────────────────────────
+
+model JournalTemplate {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String  @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  description  String?
+  lines        Json    // Array<{accountCode, debitPaise|"amount"|"creditPaise", description?}>
+  isActive     Boolean @default(true) @map("is_active")
+
+  @@unique([tenantId, code])
+  @@map("journal_templates")
+}
+
+model RecurringJournalRule {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  templateCode String   @map("template_code")
+  frequency    String   // monthly|quarterly
+  nextRunOn    DateTime @map("next_run_on")
+  dayOfMonth   Int      @map("day_of_month")
+  status       String   @default("active") // active|paused
+  lastRunAt    DateTime? @map("last_run_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, templateCode])
+  @@map("recurring_journal_rules")
+}
+
+// ── BI Metric Registry BI-01 ────────────────────────────────────────────────
+
+model MetricDefinition {
   id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String  @map("tenant_id") @db.Uuid
+  code      String  // e.g. "collections.mtd", "safety.score"
+  name      String
+  domain    String  // sales|finance|projects|safety|hr
+  unit      String  @default("paise") // paise|pct|count|days
+  direction String  @default("up_is_good") // up_is_good|down_is_good
+
+  @@unique([tenantId, code])
+  @@map("metric_definitions")
+}
+
+model MetricSnapshot {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  metricCode   String   @map("metric_code")
+  period       String   // "2026-09" or "2026-09-15"
+  valueNum     Decimal  @map("value_num") @db.Decimal(20, 4)
+  dimensions   Json?    // {projectId, entity, ...}
+  recordedAt   DateTime @default(now()) @map("recorded_at")
+
+  @@unique([tenantId, metricCode, period])
+  @@index([tenantId, metricCode])
+  @@map("metric_snapshots")
+}
+
+model Account {  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String  @map("tenant_id") @db.Uuid
   code      String // e.g. "1000-ASSETS", "2000-LIAB", "4000-REVENUE"
   name      String
