@@ -48,6 +48,13 @@ export class ApService {
         matchResult: matchResult as object,
       },
     });
+    await this.prisma.auditEvent.create({
+      data: {
+        tenantId, actorKind: "human", action: "gl.ap.matched",
+        entityType: "vendor_invoice", entityId: invoice.id,
+        after: { invoiceNo: input.invoiceNo, status, variancePct } as object,
+      },
+    });
     return { matchResult, status, tdsPaise, invoiceId: invoice.id };
   }
 
@@ -59,5 +66,13 @@ export class ApService {
     });
     const totalPaise = invoices.reduce((s, i) => s + i.amountPaise, 0n);
     return { proposals: invoices.map((i) => ({ invoiceId: i.id, vendorId: i.vendorId, amountPaise: i.amountPaise.toString() })), totalPaise: totalPaise.toString() };
+  }
+
+  async listInvoices(tenantId: string, status?: string) {
+    return this.prisma.vendorInvoice.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      orderBy: { invoiceDate: "desc" },
+      take: 200,
+    });
   }
 }

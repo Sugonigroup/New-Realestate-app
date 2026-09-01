@@ -43,6 +43,29 @@ export class BankService {
         matched += 1;
       }
     }
+    await this.prisma.auditEvent.create({
+      data: {
+        tenantId, actorKind: "system", action: "gl.bank.matched",
+        entityType: "bank_transaction",
+        after: { bankAccountId, matched } as object,
+      },
+    });
     return { matched };
+  }
+
+  async listAccounts(tenantId: string) {
+    return this.prisma.bankAccount.findMany({ where: { tenantId }, orderBy: { accountNo: "asc" } });
+  }
+
+  async listTransactions(tenantId: string, bankAccountId?: string) {
+    return this.prisma.bankTransaction.findMany({
+      where: { tenantId, ...(bankAccountId ? { bankAccountId } : {}) },
+      orderBy: { date: "desc" },
+      take: 200,
+    });
+  }
+
+  async countUnmatched(tenantId: string): Promise<number> {
+    return this.prisma.bankTransaction.count({ where: { tenantId, matched: false } });
   }
 }

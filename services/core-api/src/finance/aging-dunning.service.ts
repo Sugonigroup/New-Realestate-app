@@ -14,7 +14,7 @@ export class AgingDunningService {
 
   async calculateArAging(tenantId: string, asOfDate: Date = new Date()) {
     const demands = await this.prisma.demand.findMany({
-      where: { tenantId, status: { in: ["issued", "overdue"] } },
+      where: { tenantId, status: { in: ["issued", "due", "reminded", "part_paid", "overdue"] } },
     });
 
     let currentPaise = 0n;

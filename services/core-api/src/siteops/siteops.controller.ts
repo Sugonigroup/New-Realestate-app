@@ -191,6 +191,30 @@ export class SiteOpsController {
     return this.quality.raiseNcr(ctx!.tenantId!, dto);
   }
 
+  @Post("quality/ncrs/:ncrNo/resolve")
+  async resolveNcr(@Param("ncrNo") ncrNo: string, @Body() body: unknown): Promise<unknown> {
+    await this.permissions.requireAsync("quality.inspection.create");
+    const dto = z.object({ rootCause: z.string().min(1) }).parse(body);
+    const ctx = getRequestContext();
+    return this.quality.resolveNcr(ctx!.tenantId!, ncrNo, dto.rootCause);
+  }
+
+  @Get("quality/ncrs")
+  async listNcrs(@Query("projectId") projectId: string): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    if (!z.string().uuid().safeParse(projectId).success) return [];
+    return this.quality.listNcrs(ctx!.tenantId!, projectId);
+  }
+
+  @Get("quality/pour-cards")
+  async listPourCards(@Query("projectId") projectId: string): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    if (!z.string().uuid().safeParse(projectId).success) return [];
+    return this.quality.listPourCards(ctx!.tenantId!, projectId);
+  }
+
   // ── HSE ─────────────────────────────────────────────────────────────────
 
   @Post("hse/permits")
@@ -229,6 +253,22 @@ export class SiteOpsController {
     await this.permissions.requireAsync("projects.read");
     const ctx = getRequestContext();
     return this.hse.siteSafetyScore(ctx!.tenantId!, id);
+  }
+
+  @Get("hse/permits")
+  async listPermits(@Query("projectId") projectId: string): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    if (!z.string().uuid().safeParse(projectId).success) return [];
+    return this.hse.listPermits(ctx!.tenantId!, projectId);
+  }
+
+  @Get("hse/incidents")
+  async listIncidents(@Query("projectId") projectId: string): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    if (!z.string().uuid().safeParse(projectId).success) return [];
+    return this.hse.listIncidents(ctx!.tenantId!, projectId);
   }
 
   // ── Inventory (INV-01) ──────────────────────────────────────────────────

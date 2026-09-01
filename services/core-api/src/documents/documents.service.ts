@@ -106,7 +106,7 @@ export class DocumentsService {
     return { content, mimeType: v.mimeType, version: v.version, sha256: v.sha256 };
   }
 
-  async list(tenantId: string, filters: { projectId?: string; folderPrefix?: string }): Promise<unknown[]> {
+  async list(tenantId: string, filters: { projectId?: string; folderPrefix?: string; docClass?: string }): Promise<unknown[]> {
     this.permissions.require("docs.read", { projectId: filters.projectId });
     return this.prisma.document.findMany({
       where: {
@@ -114,6 +114,7 @@ export class DocumentsService {
         deletedAt: null,
         ...(filters.projectId ? { projectId: filters.projectId } : {}),
         ...(filters.folderPrefix ? { folderPath: { startsWith: filters.folderPrefix } } : {}),
+        ...(filters.docClass ? { docClass: filters.docClass } : {}),
       },
       orderBy: { updatedAt: "desc" },
       take: 100,

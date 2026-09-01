@@ -109,4 +109,18 @@ export class HseService {
       rating,
     };
   }
+
+  async listPermits(tenantId: string, projectId: string) {
+    return this.prisma.permitToWork.findMany({
+      where: { tenantId, projectId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async listIncidents(tenantId: string, projectId: string) {
+    return this.prisma.safetyIncident.findMany({
+      where: { tenantId, projectId },
+      orderBy: { reportedAt: "desc" },
+    });
+  }
 }

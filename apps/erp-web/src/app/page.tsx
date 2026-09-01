@@ -46,9 +46,15 @@ export default async function DashboardPage() {
         <div className="mb-6 text-lg font-semibold">BuildOS</div>
         <nav className="space-y-1 text-sm">
           {nav.map((item) => (
-            <div key={item.key} className="rounded px-3 py-2" style={{ color: "var(--bo-text-muted)" }}>
-              {item.label}
-            </div>
+            item.href ? (
+              <a key={item.key} href={item.href} className="block rounded px-3 py-2" style={{ color: "var(--bo-text)" }}>
+                {item.label}
+              </a>
+            ) : (
+              <div key={item.key} className="rounded px-3 py-2" style={{ color: "var(--bo-text-muted)" }}>
+                {item.label}
+              </div>
+            )
           ))}
         </nav>
       </aside>

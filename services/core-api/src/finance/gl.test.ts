@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { GlService } from "./gl.service.js";
 import { ApService } from "./ap.service.js";
 import { BankService } from "./bank.service.js";
-import { Money } from "@buildos/money-utils";
 
 function fakePrisma() {
   const db = {
@@ -13,14 +12,26 @@ function fakePrisma() {
       { id: "a4", tenantId: "t-1", code: "9000-GRP", name: "Group header", type: "asset", isPostable: false },
     ],
     journals: [] as Array<Record<string, unknown> & { id: string }>,
-    periods: [{ tenantId: "t-1", period: "2026-09", status: "open" }],
+    periods: [{ id: "fp-1", tenantId: "t-1", period: "2026-09", status: "open", start: new Date("2026-09-01"), end: new Date("2026-09-30") }],
     invoices: [] as Array<Record<string, unknown> & { id: string }>,
     bankTxs: [] as Array<Record<string, unknown> & { id: string }>,
   };
   let seq = 0;
-  const prisma = {
-    account: { findFirst: vi.fn(async ({ where }: { where: { code: string } }) => db.accounts.find((a) => a.code === where.code)) },
-    fiscalPeriod: { findUnique: vi.fn(async ({ where }: { where: { tenantId_period: { period: string } } }) => db.periods.find((p) => p.period === where.tenantId_period.period)) },
+    const prisma = {
+    account: {
+      findFirst: vi.fn(async ({ where }: { where: { code: string } }) => db.accounts.find((a) => a.code === where.code)),
+      findMany: vi.fn(async () => db.accounts),
+    },
+    fiscalPeriod: {
+      findUnique: vi.fn(async ({ where }: { where: { tenantId_period?: { period: string }; id?: string } }) =>
+        db.periods.find((p) => p.period === where.tenantId_period?.period || p.id === where.id),
+      ),
+      findMany: vi.fn(async () => db.periods),
+      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(db.periods[0]!, data);
+        return db.periods[0];
+      }),
+    },
     journal: {
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const row = { ...data, id: `jr-${++seq}`, lines: (data as { lines: { create: Array<Record<string, unknown>> } }).lines.create.map((l, i) => ({ id: `jl-${seq}-${i}`, ...l })) };
@@ -33,8 +44,14 @@ function fakePrisma() {
         Object.assign(j, data);
         return j;
       }),
-      findMany: vi.fn(async ({ where }: { where: { status: string; date?: { lte?: Date } } }) =>
-        db.journals.filter((j) => j.status === where.status && (!where.date?.lte || new Date(j.date as string) <= where.date.lte)),
+      findMany: vi.fn(async ({ where }: { where?: { status?: string; date?: { lte?: Date; gte?: Date } } } = {}) =>
+        db.journals.filter((j) => {
+          if (where?.status && j.status !== where.status) return false;
+          const d = new Date(j.date as Date);
+          if (where?.date?.lte && d > where.date.lte) return false;
+          if (where?.date?.gte && d < where.date.gte) return false;
+          return true;
+        }),
       ),
     },
     vendorInvoice: {
@@ -55,15 +72,26 @@ function fakePrisma() {
       findMany: vi.fn(async ({ where }: { where: { matched?: boolean } }) =>
         db.bankTxs.filter((t) => where.matched === undefined || t.matched === where.matched),
       ),
+      count: vi.fn(async ({ where }: { where: { matched?: boolean } }) =>
+        db.bankTxs.filter((t) => where.matched === undefined || t.matched === where.matched).length,
+      ),
       update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
         const t = db.bankTxs.find((x) => x.id === where.id)!;
         Object.assign(t, data);
         return t;
       }),
     },
-    auditEvent: { create: vi.fn(async ({ data }: { data: unknown }) => data) },
+    bankAccount: { findMany: vi.fn(async () => []) },
+    auditEvent: {
+      create: vi.fn(async ({ data }: { data: unknown }) => data),
+      findMany: vi.fn(async () => []),
+    },
   };
-  return { prisma, db };
+  const withTx = {
+    ...prisma,
+    $transaction: vi.fn(async (fn: (p: typeof prisma) => unknown) => fn(prisma)),
+  };
+  return { prisma: withTx, db };
 }
 
 const TENANT = "t-1";
@@ -143,7 +171,10 @@ describe("GlService (P0)", () => {
 
   it("closed period blocks transactions", async () => {
     const { prisma } = fakePrisma();
-    prisma.fiscalPeriod.findUnique.mockResolvedValue({ tenantId: TENANT, period: "2026-09", status: "hard_closed" });
+    prisma.fiscalPeriod.findUnique.mockResolvedValue({
+      id: "fp-1", tenantId: TENANT, period: "2026-09", status: "hard_closed",
+      start: new Date("2026-09-01"), end: new Date("2026-09-30"),
+    });
     const svc = new GlService(prisma as never);
     await expect(svc.createJournal(balancedJournal("JV-005"))).rejects.toThrow(/hard_closed/);
   });
@@ -188,5 +219,49 @@ describe("BankService (P0)", () => {
     const { matched } = await bankSvc.autoMatch(TENANT, "ba-1");
     void matched;
     expect(db.bankTxs.length).toBe(2);
+  });
+});
+
+describe("GlService lists and period close (P0 A)", () => {
+  it("lists accounts and closes an open period with no drafts", async () => {
+    const { prisma, db } = fakePrisma();
+    const svc = new GlService(prisma as never);
+    const accounts = await svc.listAccounts(TENANT);
+    expect(accounts.length).toBe(4);
+    const closed = await svc.closePeriod(TENANT, "2026-09", "soft", "cfo-1") as { status: string };
+    expect(closed.status).toBe("soft_closed");
+    expect(db.periods[0]!.status).toBe("soft_closed");
+  });
+
+  it("refuses close when draft journals exist", async () => {
+    const { prisma, db } = fakePrisma();
+    db.journals.push({
+      id: "jr-draft", voucherNo: "JV-D", status: "draft", date: new Date("2026-09-10"), tenantId: TENANT,
+    });
+    const svc = new GlService(prisma as never);
+    await expect(svc.closePeriod(TENANT, "2026-09", "soft", "cfo-1")).rejects.toThrow(/draft/);
+  });
+
+  it("lists journals, periods, and audit", async () => {
+    const { prisma } = fakePrisma();
+    const svc = new GlService(prisma as never);
+    await svc.createJournal(balancedJournal("JV-LIST"));
+    const journals = await svc.listJournals(TENANT) as Array<{ voucherNo: string }>;
+    expect(journals.some((j) => j.voucherNo === "JV-LIST")).toBe(true);
+    const periods = await svc.listPeriods(TENANT) as Array<{ period: string }>;
+    expect(periods[0]!.period).toBe("2026-09");
+    await expect(svc.listAudit(TENANT)).resolves.toEqual([]);
+  });
+});
+
+describe("BankService lists (P0 A)", () => {
+  it("counts unmatched imported lines", async () => {
+    const { prisma } = fakePrisma();
+    const bankSvc = new BankService(prisma as never);
+    await bankSvc.importTransactions(TENANT, "ba-1", [
+      { date: new Date(), amountPaise: 1n, narration: "x" },
+    ]);
+    expect(await bankSvc.countUnmatched(TENANT)).toBe(1);
+    expect(await bankSvc.listAccounts(TENANT)).toEqual([]);
   });
 });

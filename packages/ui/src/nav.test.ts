@@ -24,4 +24,8 @@ describe("role-filtered navigation (04 §3)", () => {
     expect(keys).toContain("reports");
     expect(keys).not.toContain("projects");
   });
+
+  it("Finance nav points at the GL workspace", () => {
+    expect(ERP_NAV.find((n) => n.key === "finance")?.href).toBe("/finance");
+  });
 });
