@@ -21,9 +21,13 @@ export const ROLE_TEMPLATES: Role[] = [
   ]),
   R("finance_manager", "Finance Manager", [
     "finance.demand.*", "finance.receipt.*", "finance.recon.*", "finance.ap.create",
+    "finance.journal.create", "finance.journal.post",
     "finance.refund.propose", "reports.read", "workflow.act",
   ], { denied: ["finance.paymentrun.release", "finance.escrow.withdraw"] }),
-  R("accountant", "Accountant", ["finance.read", "finance.demand.read", "finance.ap.create", "finance.voucher.read"]),
+  R("accountant", "Accountant", [
+    "finance.read", "finance.demand.read", "finance.ap.create", "finance.voucher.read",
+    "finance.journal.create", "finance.journal.post",
+  ]),
   R("project_director", "Project Director", [
     "projects.*", "procurement.read", "reports.read", "workflow.approve", "quality.approve", "safety.read",
   ]),

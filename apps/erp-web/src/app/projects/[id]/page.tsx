@@ -65,7 +65,10 @@ export default async function ProjectDashboardPage({
       </div>
 
       <div className="mt-6 text-sm">
-        <a href={`/projects/${projectId}/certify`} style={{ color: "var(--bo-primary)" }}>Certify a milestone →</a>
+        <a href={`/projects/${projectId}/certify`} className="mr-4" style={{ color: "var(--bo-primary)" }}>Certify a milestone</a>
+        <a href={`/projects/${projectId}/snags`} className="mr-4" style={{ color: "var(--bo-primary)" }}>Open NCRs</a>
+        <a href={`/projects/${projectId}/hse`} className="mr-4" style={{ color: "var(--bo-primary)" }}>HSE</a>
+        <a href={`/projects/${projectId}/approvals`} style={{ color: "var(--bo-primary)" }}>Approvals register</a>
       </div>
     </main>
   );

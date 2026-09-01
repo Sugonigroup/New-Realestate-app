@@ -6,6 +6,7 @@
 import { PrismaClient } from "@prisma/client";
 import { ROLE_TEMPLATES } from "@buildos/permissions";
 import { hashPassword } from "../src/auth/password.js";
+import { seedFinanceBooks } from "./seed-finance.js";
 
 const prisma = new PrismaClient();
 
@@ -30,6 +31,12 @@ async function main(): Promise<void> {
       }
       for (const grant of role.denied ?? []) {
         await prisma.permission.create({ data: { roleId: created.id, grant, isDeny: true } });
+      }
+    }
+    else {
+      for (const grant of role.permissions) {
+        const has = await prisma.permission.findFirst({ where: { roleId: existing.id, grant, isDeny: false } });
+        if (!has) await prisma.permission.create({ data: { roleId: existing.id, grant } });
       }
     }
   }
@@ -196,6 +203,37 @@ async function main(): Promise<void> {
     });
   }
 
+  const approvalCount = await prisma.approvalDoc.count({ where: { projectId: project.id } });
+  if (approvalCount === 0) {
+    await prisma.approvalDoc.createMany({
+      data: [
+        { tenantId: tenant.id, projectId: project.id, kind: "sanctioned_plan", ref: "BBMP/VRD/2024/441", expiresAt: new Date("2028-03-31") },
+        { tenantId: tenant.id, projectId: project.id, kind: "fire_noc", ref: "KSFES/NOC/2025/1182", expiresAt: new Date("2026-10-15") },
+        { tenantId: tenant.id, projectId: project.id, kind: "environmental", ref: "SEIAA/KA/2024/77" },
+      ],
+    });
+  }
+  const ncrCount = await prisma.nonConformanceReport.count({ where: { projectId: project.id } });
+  if (ncrCount === 0) {
+    await prisma.nonConformanceReport.create({
+      data: {
+        tenantId: tenant.id, projectId: project.id, ncrNo: "NCR-2026-004",
+        description: "Honeycombing at Tower 1 column C12 after 3rd pour",
+        severity: "major", status: "open",
+      },
+    });
+  }
+  const pourCount = await prisma.pourCard.count({ where: { projectId: project.id } });
+  if (pourCount === 0) {
+    await prisma.pourCard.create({
+      data: {
+        tenantId: tenant.id, projectId: project.id, pourNo: "PCRD-T1-S4",
+        locationElement: "Tower 1 slab 4", concreteGrade: "M30", targetVolumeCum: 42.5,
+        rebarCleared: true, shutterCleared: true, mepCleared: false, qcCleared: false, status: "pending",
+      },
+    });
+  }
+
   // Procurement: material stock + PO
   const stockCount = await prisma.materialStock.count({ where: { projectId: project.id } });
   if (stockCount === 0) {
@@ -228,6 +266,8 @@ async function main(): Promise<void> {
       ],
     });
   }
+
+  await seedFinanceBooks(prisma, tenant.id, entityId1, project.id);
 }
 
 main()

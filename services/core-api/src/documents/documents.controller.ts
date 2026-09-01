@@ -43,9 +43,10 @@ export class DocumentsController {
   async list(
     @Query("projectId") projectId?: string,
     @Query("folderPrefix") folderPrefix?: string,
+    @Query("docClass") docClass?: string,
   ): Promise<unknown> {
     const ctx = getRequestContext();
-    return this.documents.list(ctx!.tenantId!, { projectId, folderPrefix });
+    return this.documents.list(ctx!.tenantId!, { projectId, folderPrefix, docClass });
   }
 
   @Get(":id/download")

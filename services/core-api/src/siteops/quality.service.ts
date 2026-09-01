@@ -130,4 +130,19 @@ export class QualityService {
       data: { status: "resolved", rootCause, resolvedAt: new Date() },
     });
   }
+
+  async listNcrs(tenantId: string, projectId: string) {
+    return this.prisma.nonConformanceReport.findMany({
+      where: { tenantId, projectId },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async listPourCards(tenantId: string, projectId: string) {
+    return this.prisma.pourCard.findMany({
+      where: { tenantId, projectId },
+      orderBy: { createdAt: "desc" },
+      include: { cubeTests: { orderBy: { testedAt: "desc" } } },
+    });
+  }
 }

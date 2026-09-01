@@ -36,6 +36,13 @@ export class ProjectsController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get()
+  async list(): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    return this.projects.listProjects(ctx!.tenantId!);
+  }
+
   @Post(":projectId/activities")
   async addActivity(@Param("projectId") projectId: string, @Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("projects.wbs.edit");
@@ -98,5 +105,12 @@ export class ProjectsController {
     await this.permissions.requireAsync("projects.read");
     const ctx = getRequestContext();
     return this.projects.approvalsReport(ctx!.tenantId!, projectId, new Date());
+  }
+
+  @Get(":projectId")
+  async getOne(@Param("projectId") projectId: string): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    return this.projects.getProject(ctx!.tenantId!, projectId);
   }
 }

@@ -93,47 +93,51 @@ export class GlService {
 
   /** Reverse a posted journal — creates a linked reversal, never deletes. */
   async reverseJournal(tenantId: string, journalId: string, reversedBy: string, reason: string): Promise<unknown> {
-    const original = await this.prisma.journal.findFirst({
-      where: { id: journalId, tenantId },
-      include: { lines: true },
-    });
-    if (!original) throw new NotFoundException("journal not found");
-    if (original.status !== "posted") throw new BadRequestException(`journal is ${original.status} — only posted journals can be reversed`);
+    return this.prisma.$transaction(async (tx) => {
+      const original = await tx.journal.findFirst({
+        where: { id: journalId, tenantId },
+        include: { lines: true },
+      });
+      if (!original) throw new NotFoundException("journal not found");
+      if (original.status !== "posted") throw new BadRequestException(`journal is ${original.status} — only posted journals can be reversed`);
 
-    await this.assertPeriodOpen(tenantId, original.date);
-    const reversalVoucherNo = `${original.voucherNo}-REV`;
-    const reversal = await this.prisma.journal.create({
-      data: {
-        tenantId,
-        voucherNo: reversalVoucherNo,
-        type: original.type,
-        date: new Date(),
-        narration: `Reversal of ${original.voucherNo}: ${reason}`,
-        status: "posted",
-        postedBy: reversedBy,
-        postedAt: new Date(),
-        reversalOf: original.id,
-        lines: {
-          create: original.lines.map((l) => ({
-            accountCode: l.accountCode,
-            debitPaise: l.creditPaise, // swap
-            creditPaise: l.debitPaise,
-            costCenter: l.costCenter,
-            description: `Reversal: ${l.description ?? ""}`,
-          })),
+      await this.assertPeriodOpen(tenantId, original.date);
+      const reversalVoucherNo = `${original.voucherNo}-REV`;
+      const reversal = await tx.journal.create({
+        data: {
+          tenantId,
+          voucherNo: reversalVoucherNo,
+          type: original.type,
+          date: new Date(),
+          narration: `Reversal of ${original.voucherNo}: ${reason}`,
+          status: "posted",
+          postedBy: reversedBy,
+          postedAt: new Date(),
+          reversalOf: original.id,
+          lines: {
+            create: original.lines.map((l) => ({
+              accountCode: l.accountCode,
+              debitPaise: l.creditPaise,
+              creditPaise: l.debitPaise,
+              costCenter: l.costCenter,
+              description: `Reversal: ${l.description ?? ""}`,
+            })),
+          },
         },
-      },
+      });
+      await tx.journal.update({
+        where: { id: original.id },
+        data: { status: "reversed", reversedBy },
+      });
+      await tx.auditEvent.create({
+        data: {
+          tenantId, actorUserId: reversedBy, actorKind: "human", action: "gl.journal.reversed",
+          entityType: "gl_journal", entityId: reversal.id,
+          after: { original: original.voucherNo, reversal: reversalVoucherNo, reason } as object,
+        },
+      });
+      return reversal;
     });
-    await this.prisma.journal.update({
-      where: { id: original.id },
-      data: { status: "reversed", reversedBy },
-    });
-    await this.audit(tenantId, reversedBy, "gl.journal.reversed", reversal.id, {
-      original: original.voucherNo,
-      reversal: reversalVoucherNo,
-      reason,
-    });
-    return reversal;
   }
 
   /** Trial balance: account code → net debit/credit from posted journals. */
@@ -154,6 +158,94 @@ export class GlService {
     return [...tb.entries()]
       .map(([accountCode, v]) => ({ accountCode, ...v }))
       .sort((a, b) => a.accountCode.localeCompare(b.accountCode));
+  }
+
+  async listAccounts(tenantId: string) {
+    return this.prisma.account.findMany({ where: { tenantId }, orderBy: { code: "asc" } });
+  }
+
+  async listJournals(tenantId: string, status?: string) {
+    return this.prisma.journal.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      include: { lines: true },
+      orderBy: { date: "desc" },
+      take: 200,
+    });
+  }
+
+  async getJournal(tenantId: string, id: string) {
+    const j = await this.prisma.journal.findFirst({ where: { id, tenantId }, include: { lines: true } });
+    if (!j) throw new NotFoundException("journal not found");
+    return j;
+  }
+
+  /** Posted lines for one account with running net (debit − credit). */
+  async accountLedger(tenantId: string, accountCode: string) {
+    const journals = await this.prisma.journal.findMany({
+      where: { tenantId, status: "posted" },
+      include: { lines: { where: { accountCode } } },
+      orderBy: { date: "asc" },
+    });
+    let running = 0n;
+    const rows: Array<{
+      journalId: string; voucherNo: string; date: Date; narration: string | null;
+      debitPaise: bigint; creditPaise: bigint; runningPaise: bigint;
+    }> = [];
+    for (const j of journals) {
+      for (const line of j.lines) {
+        running += line.debitPaise - line.creditPaise;
+        rows.push({
+          journalId: j.id, voucherNo: j.voucherNo, date: j.date, narration: j.narration,
+          debitPaise: line.debitPaise, creditPaise: line.creditPaise, runningPaise: running,
+        });
+      }
+    }
+    return rows;
+  }
+
+  async listPeriods(tenantId: string) {
+    return this.prisma.fiscalPeriod.findMany({ where: { tenantId }, orderBy: { period: "asc" } });
+  }
+
+  async currentPeriod(tenantId: string, asOf: Date = new Date()) {
+    const period = `${asOf.getUTCFullYear()}-${String(asOf.getUTCMonth() + 1).padStart(2, "0")}`;
+    return this.prisma.fiscalPeriod.findUnique({ where: { tenantId_period: { tenantId, period } } });
+  }
+
+  async closePeriod(tenantId: string, period: string, mode: "soft" | "hard", closedBy: string) {
+    if (!/^\d{4}-\d{2}$/.test(period)) throw new BadRequestException("period must be YYYY-MM");
+    const row = await this.prisma.fiscalPeriod.findUnique({ where: { tenantId_period: { tenantId, period } } });
+    if (!row) throw new NotFoundException(`fiscal period ${period} not found`);
+    if (row.status === "hard_closed") throw new BadRequestException(`fiscal period ${period} is hard_closed`);
+
+    const drafts = await this.prisma.journal.findMany({
+      where: { tenantId, status: "draft", date: { gte: row.start, lte: row.end } },
+      select: { id: true, voucherNo: true },
+    });
+    if (drafts.length > 0) {
+      throw new BadRequestException(`cannot close ${period}: ${drafts.length} draft journal(s) remain`);
+    }
+
+    const status = mode === "hard" ? "hard_closed" : "soft_closed";
+    const tb = await this.trialBalance(tenantId, row.end);
+    const updated = await this.prisma.fiscalPeriod.update({
+      where: { id: row.id },
+      data: { status, closedBy },
+    });
+    await this.audit(tenantId, closedBy, "gl.period.closed", updated.id, {
+      period, status, trialBalance: tb.map((t) => ({
+        accountCode: t.accountCode, debitPaise: t.debitPaise.toString(), creditPaise: t.creditPaise.toString(),
+      })),
+    });
+    return updated;
+  }
+
+  async listAudit(tenantId: string) {
+    return this.prisma.auditEvent.findMany({
+      where: { tenantId, OR: [{ entityType: "gl_journal" }, { action: { startsWith: "gl." } }] },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
   }
 
   /** Period lock. */

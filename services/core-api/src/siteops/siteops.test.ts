@@ -54,6 +54,7 @@ function fakePrisma() {
     },
     nonConformanceReport: {
       findFirst: vi.fn(async ({ where }: any) => db.ncrs.find(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.ncrs.filter(match(where))),
       create: vi.fn(async ({ data }: any) => { const r = { id: nid("ncr"), ...data }; db.ncrs.push(r); return r; }),
       update: vi.fn(async ({ where, data }: any) => {
         const r = db.ncrs.find((x) => x.id === where.id)!;
@@ -173,5 +174,17 @@ describe("Site Operations & EPC Services (SUB-01, QMS-01, HSE-01)", () => {
     expect(score.totalIncidents).toBe(1);
     expect(score.safetyScore).toBe(95); // 100 - 5 = 95
     expect(score.rating).toBe("EXCELLENT");
+  });
+
+  it("lists NCRs for a project and resolves with root cause", async () => {
+    await qc.raiseNcr(T, {
+      ncrNo: "NCR-01", projectId: PROJ, description: "Honeycombing at column C12", severity: "major",
+    });
+    const list = await qc.listNcrs(T, PROJ);
+    expect(list).toHaveLength(1);
+    expect(list[0]!.status).toBe("open");
+    const closed = await qc.resolveNcr(T, "NCR-01", "Inadequate vibration");
+    expect(closed.status).toBe("resolved");
+    expect(closed.rootCause).toBe("Inadequate vibration");
   });
 });

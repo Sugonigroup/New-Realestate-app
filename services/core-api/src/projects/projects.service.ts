@@ -9,6 +9,59 @@ import { scanExpiries } from "./site-ops.js";
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Portfolio list (D5 index): project cards with milestone + approval health. */
+  async listProjects(tenantId: string): Promise<unknown[]> {
+    const projects = await this.prisma.project.findMany({
+      where: { tenantId },
+      orderBy: { code: "asc" },
+    });
+    if (projects.length === 0) return [];
+    const ids = projects.map((p) => p.id);
+    const [milestones, approvals, activities] = await Promise.all([
+      this.prisma.milestone.findMany({
+        where: { tenantId, projectId: { in: ids } },
+        select: { projectId: true, state: true },
+      }),
+      this.prisma.approvalDoc.findMany({
+        where: { tenantId, projectId: { in: ids } },
+        select: { id: true, projectId: true, kind: true, ref: true, expiresAt: true },
+      }),
+      this.prisma.constructionActivity.findMany({
+        where: { tenantId, projectId: { in: ids } },
+        select: { projectId: true },
+      }),
+    ]);
+    const now = new Date();
+    return projects.map((p) => {
+      const ms = milestones.filter((m) => m.projectId === p.id);
+      const docs = approvals.filter((a) => a.projectId === p.id);
+      const report = scanExpiries(docs, now);
+      return {
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        city: p.city,
+        state: p.state,
+        status: p.status,
+        segmentKind: p.segmentKind,
+        reraNumber: p.reraNumber,
+        startDate: p.startDate?.toISOString() ?? null,
+        endDate: p.endDate?.toISOString() ?? null,
+        milestonesCertified: ms.filter((m) => m.state === "certified").length,
+        milestonesTotal: ms.length,
+        activityCount: activities.filter((a) => a.projectId === p.id).length,
+        approvalsExpired: report.expired.length,
+        approvalsExpiringSoon: report.expiringSoon.length,
+      };
+    });
+  }
+
+  async getProject(tenantId: string, projectId: string): Promise<unknown> {
+    const project = await this.prisma.project.findFirst({ where: { tenantId, id: projectId } });
+    if (!project) throw new NotFoundException("project not found");
+    return project;
+  }
+
   async addActivity(tenantId: string, projectId: string, input: { code: string; name: string; durationDays: number; deps: string[] }): Promise<unknown> {
     return this.prisma.constructionActivity.create({
       data: { tenantId, projectId, code: input.code, name: input.name, durationDays: input.durationDays, deps: input.deps },
@@ -81,6 +134,7 @@ export class ProjectsService {
     const docs = (await this.prisma.approvalDoc.findMany({
       where: { tenantId, projectId },
     })) as unknown as Array<{ id: string; kind: string; ref: string; expiresAt: Date | null }>;
-    return scanExpiries(docs, now, withinDays);
+    const report = scanExpiries(docs, now, withinDays);
+    return { docs, expired: report.expired, expiringSoon: report.expiringSoon };
   }
 }

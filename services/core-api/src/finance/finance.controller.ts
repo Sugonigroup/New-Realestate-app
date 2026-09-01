@@ -5,6 +5,7 @@ import { getRequestContext } from "../common/request-context.js";
 import { PermissionsService } from "../permissions/permissions.service.js";
 import { FinanceService } from "./finance.service.js";
 import { EscrowService } from "./escrow.service.js";
+import { AgingDunningService } from "./aging-dunning.service.js";
 import type { Instrument } from "./instruments.js";
 
 const generateDto = z.object({
@@ -36,6 +37,7 @@ export class FinanceController {
     private readonly finance: FinanceService,
     private readonly escrow: EscrowService,
     private readonly permissions: PermissionsService,
+    private readonly aging: AgingDunningService,
   ) {}
 
   @Post("demands/generate")
@@ -118,5 +120,12 @@ export class FinanceController {
     await this.permissions.requireAsync("finance.escrow.approve");
     const ctx = getRequestContext();
     return this.escrow.approveWithdrawal(ctx!.tenantId!, id, ctx!.userId!);
+  }
+
+  @Get("ar/aging")
+  async arAging(@Query("asOf") asOf?: string): Promise<unknown> {
+    await this.permissions.requireAsync("finance.read");
+    const ctx = getRequestContext();
+    return this.aging.calculateArAging(ctx!.tenantId!, asOf ? new Date(asOf) : new Date());
   }
 }
