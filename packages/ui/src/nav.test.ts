@@ -28,4 +28,8 @@ describe("role-filtered navigation (04 §3)", () => {
   it("Finance nav points at the GL workspace", () => {
     expect(ERP_NAV.find((n) => n.key === "finance")?.href).toBe("/finance");
   });
+
+  it("Procurement nav points at the sourcing workspace", () => {
+    expect(ERP_NAV.find((n) => n.key === "procurement")?.href).toBe("/procurement");
+  });
 });

@@ -7,6 +7,7 @@ import { PrismaClient } from "@prisma/client";
 import { ROLE_TEMPLATES } from "@buildos/permissions";
 import { hashPassword } from "../src/auth/password.js";
 import { seedFinanceBooks } from "./seed-finance.js";
+import { seedProcurementChain } from "./seed-procurement.js";
 
 const prisma = new PrismaClient();
 
@@ -253,6 +254,11 @@ async function main(): Promise<void> {
         promisedDate: new Date("2026-08-15"), receivedDate: new Date("2026-08-14"), receivedInFull: true,
       },
     });
+  }
+
+  const requester = await prisma.user.findFirst({ where: { tenantId: tenant.id, email: "admin@shree.example" } });
+  if (project) {
+    await seedProcurementChain(prisma, tenant.id, project.id, requester?.id ?? "seed-admin");
   }
 
   // Compliance: statutory filings

@@ -37,14 +37,6 @@ export class ProcurementService {
     });
   }
 
-  async listVendors(tenantId: string) {
-    return this.prisma.vendor.findMany({
-      where: { tenantId },
-      orderBy: { code: "asc" },
-      take: 200,
-    });
-  }
-
   /** Vendor rating from GRN history: on-time delivery vs PO promised date + accepted qty %. */
   async vendorRating(tenantId: string, vendorId: string) {
     const vendor = await this.prisma.vendor.findFirst({ where: { tenantId, id: vendorId } });
@@ -77,15 +69,6 @@ export class ProcurementService {
   }
 
   // ── Purchase Requisition ────────────────────────────────────────────────
-
-  async listPrs(tenantId: string) {
-    return this.prisma.purchaseRequisition.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-      include: { lines: true },
-    });
-  }
 
   async createPr(tenantId: string, input: {
     reqNo: string;
@@ -136,15 +119,6 @@ export class ProcurementService {
   }
 
   // ── RFQ ─────────────────────────────────────────────────────────────────
-
-  async listRfqs(tenantId: string) {
-    return this.prisma.rfq.findMany({
-      where: { tenantId },
-      include: { lines: true },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    });
-  }
 
   /** Issue an RFQ against an approved PR — RFQ lines are copied from PR lines. */
   async createRfq(tenantId: string, input: { rfqNo: string; requisitionId: string; closesAt?: Date }) {
@@ -305,15 +279,6 @@ export class ProcurementService {
 
   // ── GRN ─────────────────────────────────────────────────────────────────
 
-  async listGrns(tenantId: string) {
-    return this.prisma.grn.findMany({
-      where: { tenantId },
-      include: { lines: true },
-      orderBy: { receivedAt: "desc" },
-      take: 200,
-    });
-  }
-
   /** Goods receipt: per-line accepted/rejected, capped at PO balance; updates stock + PO progress. */
   async receiveGrn(tenantId: string, input: {
     grnNo: string;
@@ -399,5 +364,77 @@ export class ProcurementService {
       data: { status: complete ? "received" : "partial", receivedInFull: complete, receivedDate: complete ? input.receivedAt : null },
     });
     return grn;
+  }
+
+  async listVendors(tenantId: string) {
+    return this.prisma.vendor.findMany({ where: { tenantId }, orderBy: { code: "asc" }, take: 200 });
+  }
+
+  async listPrs(tenantId: string, status?: string) {
+    return this.prisma.purchaseRequisition.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      include: { lines: true },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
+
+  async listRfqs(tenantId: string, status?: string) {
+    return this.prisma.rfq.findMany({
+      where: { tenantId, ...(status ? { status } : {}) },
+      include: { lines: true, quotes: { include: { lines: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
+
+  async getRfq(tenantId: string, id: string) {
+    const rfq = await this.prisma.rfq.findFirst({
+      where: { id, tenantId },
+      include: { lines: true, quotes: { include: { lines: true } } },
+    });
+    if (!rfq) throw new NotFoundException(`RFQ ${id} not found`);
+    return rfq;
+  }
+
+  async listOrders(tenantId: string) {
+    return this.prisma.purchaseOrder.findMany({
+      where: { tenantId },
+      include: { lines: true },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
+
+  async listGrns(tenantId: string) {
+    return this.prisma.grn.findMany({
+      where: { tenantId },
+      include: { lines: true },
+      orderBy: { receivedAt: "desc" },
+      take: 200,
+    });
+  }
+
+  async dashboard(tenantId: string) {
+    const [prs, rfqs, orders, grns, raBills] = await Promise.all([
+      this.listPrs(tenantId),
+      this.listRfqs(tenantId),
+      this.listOrders(tenantId),
+      this.listGrns(tenantId),
+      this.prisma.raBill.findMany({ where: { tenantId }, take: 200 }),
+    ]);
+    const raWithAnomalies = raBills.filter((b) => {
+      const a = b.anomalies as unknown;
+      return Array.isArray(a) && a.length > 0;
+    }).length;
+    return {
+      kpis: {
+        draftPrCount: prs.filter((p) => p.status === "draft").length,
+        openRfqCount: rfqs.filter((r) => r.status === "open").length,
+        openPoCount: orders.filter((o) => o.status === "open" || o.status === "partial").length,
+        grnCount: grns.length,
+        raAnomalyCount: raWithAnomalies,
+      },
+    };
   }
 }

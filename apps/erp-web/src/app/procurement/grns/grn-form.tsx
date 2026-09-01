@@ -1,123 +1,54 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { browserApi } from "@/lib/api";
 
-interface PostedGrn {
-  id: string;
-  grnNo: string;
-  status: string;
-  lines: Array<{ qty: string | number; acceptedQty: string | number; rejectedQty: string | number }>;
-}
+interface Line { id: string; materialName: string; qty: string | number; receivedQty: string | number }
+interface Po { id: string; poNo: string; projectId: string; status: string; lines: Line[] }
 
-function toIso(local: string): string {
-  if (!local) return new Date().toISOString();
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
-}
-
-export default function GrnForm({
-  defaults,
-}: {
-  defaults: { orderId?: string; projectId?: string; poLineId?: string };
-}) {
+export default function GrnForm({ orders }: { orders: Po[] }) {
   const router = useRouter();
+  const open = orders.filter((o) => o.status === "open" || o.status === "partial");
+  const [orderId, setOrderId] = useState(open[0]?.id ?? orders[0]?.id ?? "");
   const [grnNo, setGrnNo] = useState("");
-  const [orderId, setOrderId] = useState(defaults.orderId ?? "");
-  const [projectId, setProjectId] = useState(defaults.projectId ?? "");
-  const [poLineId, setPoLineId] = useState(defaults.poLineId ?? "");
-  const [receivedAt, setReceivedAt] = useState("");
-  const [qty, setQty] = useState("1");
-  const [acceptedQty, setAccepted] = useState("1");
-  const [rejectedQty, setRejected] = useState("");
-  const [remark, setRemark] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [posted, setPosted] = useState<PostedGrn | null>(null);
+  const [qty, setQty] = useState("");
+  const [accepted, setAccepted] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const order = useMemo(() => orders.find((o) => o.id === orderId), [orders, orderId]);
+  const line = order?.lines?.[0];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    setPosted(null);
-    const received = Number(qty);
-    const accepted = Number(acceptedQty);
-    const rejected = rejectedQty === "" ? undefined : Number(rejectedQty);
+    if (!order || !line) return;
+    setBusy(true); setError(null);
     try {
-      const result = await browserApi().post<PostedGrn>("/v1/procurement/grns", {
+      await browserApi().post("/v1/procurement/grns", {
         grnNo,
-        orderId,
-        projectId,
-        receivedAt: toIso(receivedAt),
-        lines: [{
-          poLineId,
-          qty: received,
-          acceptedQty: accepted,
-          rejectedQty: rejected,
-          remark: remark || undefined,
-        }],
+        orderId: order.id,
+        projectId: order.projectId,
+        receivedAt: new Date().toISOString(),
+        lines: [{ poLineId: line.id, qty: Number(qty), acceptedQty: Number(accepted) }],
       });
-      setPosted(result);
       setGrnNo("");
       router.refresh();
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (err) { setError((err as Error).message); }
+    finally { setBusy(false); }
   }
 
   return (
-    <form onSubmit={submit} className="mb-6 grid max-w-2xl grid-cols-2 gap-3 rounded-lg border p-4" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        GRN no
-        <input required value={grnNo} onChange={(e) => setGrnNo(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Received at
-        <input type="datetime-local" value={receivedAt} onChange={(e) => setReceivedAt(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Purchase order id
-        <input required value={orderId} onChange={(e) => setOrderId(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 font-mono text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Project id
-        <input required value={projectId} onChange={(e) => setProjectId(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 font-mono text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="col-span-2 block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        PO line id
-        <input required value={poLineId} onChange={(e) => setPoLineId(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 font-mono text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Qty received
-        <input required inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Accepted qty
-        <input required inputMode="decimal" value={acceptedQty} onChange={(e) => setAccepted(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Rejected qty (optional)
-        <input inputMode="decimal" placeholder="defaults to received − accepted" value={rejectedQty} onChange={(e) => setRejected(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <label className="block text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Remark
-        <input value={remark} onChange={(e) => setRemark(e.target.value)} className="mt-1 w-full rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
-      </label>
-      <p className="col-span-2 text-xs" style={{ color: "var(--bo-text-muted)" }}>
-        Accepted + rejected must equal received. Receipts are immutable once posted; qty cannot exceed PO outstanding.
-      </p>
-      <button type="submit" disabled={busy} className="col-span-2 rounded px-4 py-2 text-sm font-medium text-white disabled:opacity-50" style={{ background: "var(--bo-primary)" }}>
-        {busy ? "Posting…" : "Post GRN"}
-      </button>
-      {error && <p className="col-span-2 text-sm" style={{ color: "var(--bo-danger)" }}>{error}</p>}
-      {posted && (
-        <p className="col-span-2 text-sm" style={{ color: "var(--bo-success)" }}>
-          Posted {posted.grnNo} ({posted.status}) · accepted {String(posted.lines[0]?.acceptedQty ?? "")} / rejected {String(posted.lines[0]?.rejectedQty ?? "")}
-        </p>
-      )}
+    <form onSubmit={(e) => void submit(e)} className="mb-6 grid grid-cols-2 gap-3 rounded-lg border p-4 md:grid-cols-5" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>
+      <input required className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} placeholder="GRN no" value={grnNo} onChange={(e) => setGrnNo(e.target.value)} />
+      <select required className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} value={orderId} onChange={(e) => setOrderId(e.target.value)}>
+        {orders.length === 0 && <option value="">No POs</option>}
+        {orders.map((o) => <option key={o.id} value={o.id}>{o.poNo} · {o.status}</option>)}
+      </select>
+      <input required className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} placeholder={line ? `Qty (line ${line.materialName})` : "Qty"} value={qty} onChange={(e) => setQty(e.target.value)} />
+      <input required className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} placeholder="Accepted qty" value={accepted} onChange={(e) => setAccepted(e.target.value)} />
+      <button type="submit" disabled={busy || !order || !line} className="rounded px-3 py-2 text-sm text-white" style={{ background: "var(--bo-primary)" }}>{busy ? "Posting…" : "Post GRN"}</button>
+      {error && <p className="col-span-full text-sm" style={{ color: "var(--bo-danger)" }}>{error}</p>}
     </form>
   );
 }

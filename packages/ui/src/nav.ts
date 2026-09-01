@@ -19,7 +19,7 @@ export const ERP_NAV: NavItem[] = [
   { key: "projects", label: "Projects", module: "projects", href: "/projects" },
   { key: "contracts", label: "Contracts", module: "projects", href: "/contracts" },
   { key: "assets", label: "Assets", module: "projects", href: "/assets" },
-  { key: "procurement", label: "Procurement", module: "procurement", href: "/procurement/prs" },
+  { key: "procurement", label: "Procurement", module: "procurement", href: "/procurement" },
   { key: "finance", label: "Finance", module: "finance", href: "/finance" },
   { key: "siteops", label: "Site Ops", module: "projects", href: "/siteops" },
   { key: "compliance", label: "Compliance", module: "compliance", href: "/compliance/rera" },
