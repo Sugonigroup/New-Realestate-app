@@ -23,6 +23,15 @@ export class BudgetingService {
 
   // ── Budgets ─────────────────────────────────────────────────────────────
 
+  async listBudgets(tenantId: string) {
+    return this.prisma.enterpriseBudget.findMany({
+      where: { tenantId },
+      orderBy: [{ fiscalYear: "desc" }, { versionNo: "desc" }],
+      take: 50,
+      include: { lines: true },
+    });
+  }
+
   async createBudget(tenantId: string, input: {
     fiscalYear: string;
     title: string;

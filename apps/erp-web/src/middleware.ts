@@ -8,7 +8,8 @@ import type { NextRequest } from "next/server";
 export function middleware(req: NextRequest) {
   const hasSession = req.cookies.has("access_token");
   const onLogin = req.nextUrl.pathname.startsWith("/login");
-  if (!hasSession && !onLogin) {
+  const onPortal = req.nextUrl.pathname.startsWith("/portal");
+  if (!hasSession && !onLogin && !onPortal) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
   if (hasSession && onLogin) {

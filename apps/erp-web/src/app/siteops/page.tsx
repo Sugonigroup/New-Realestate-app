@@ -1,143 +1,68 @@
-"use client";
+import Link from "next/link";
+import { loadList } from "@/lib/load";
+import { PROJECT_NAV, Subnav } from "@/app/subnav";
+import InventoryForms from "./inventory-forms";
+import MoveForms from "./move-forms";
 
-import React, { useState } from "react";
-
-interface RaBillItem {
-  id: string;
-  billNo: string;
-  contractorName: string;
-  period: string;
-  grossValPaise: bigint;
-  retentionPaise: bigint;
-  tdsPaise: bigint;
-  netPayablePaise: bigint;
-  status: "submitted" | "certified" | "paid";
+interface ReorderRow {
+  materialId: string;
+  materialName: string;
+  stockQty: number;
+  coverageDays: number;
+  reorderLevel: number;
+  inboundPoQty: number;
+  alert: string;
 }
 
-const INITIAL_BILLS: RaBillItem[] = [
-  {
-    id: "rab-1",
-    billNo: "RA-2026-081",
-    contractorName: "Shree Ram Masonry & Plaster",
-    period: "2026-08",
-    grossValPaise: 10_00_000_00n, // ₹10.00 Lakh
-    retentionPaise: 50_000_00n, // 5% = ₹50,000
-    tdsPaise: 19_000_00n, // 2% 194C = ₹19,000
-    netPayablePaise: 8_31_000_00n, // ₹8.31 Lakh
-    status: "certified",
-  },
-  {
-    id: "rab-2",
-    billNo: "RA-2026-082",
-    contractorName: "Quality Steel Fabricators",
-    period: "2026-08",
-    grossValPaise: 25_00_000_00n, // ₹25.00 Lakh
-    retentionPaise: 1_25_000_00n, // 5% = ₹1.25 Lakh
-    tdsPaise: 47_500_00n, // 2% 194C = ₹47,500
-    netPayablePaise: 20_77_500_00n, // ₹20.77 Lakh
-    status: "submitted",
-  },
-];
-
-export default function SiteOpsPage() {
-  const [bills] = useState<RaBillItem[]>(INITIAL_BILLS);
+/** Site ops: inventory reorder report (project-scoped). */
+export default async function SiteOpsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ projectId?: string }>;
+}) {
+  const { projectId } = await searchParams;
+  const rows = projectId
+    ? await loadList<ReorderRow>(`/v1/siteops/inventory/reorder?projectId=${projectId}`)
+    : [];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <main className="p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Site operations</h1>
+        <div className="flex gap-4 text-sm">
+          <Link href="/procurement/ra-bills" style={{ color: "var(--bo-primary)" }}>RA bills →</Link>
+          <Link href="/siteops/hse" style={{ color: "var(--bo-primary)" }}>HSE →</Link>
+        </div>
+      </div>
+      <Subnav items={PROJECT_NAV} />
+
+      <InventoryForms projectId={projectId} />
+      <MoveForms projectId={projectId} />
+
+      <form className="mb-6 flex items-end gap-3" method="get">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Site Operations & Construction EPC</h1>
-          <p className="text-sm text-slate-600">Subcontractor RA Bill certification, Concrete Pour Cards (M30/M40), and HSE Permit-to-Work (PTW)</p>
+          <label className="mb-1 block text-xs uppercase" style={{ color: "var(--bo-text-muted)" }}>Project ID</label>
+          <input name="projectId" defaultValue={projectId ?? ""} className="w-72 rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
         </div>
-        <div className="flex gap-2">
-          <button className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm px-4 py-2 rounded-md font-medium transition">
-            + Issue PTW Permit
-          </button>
-          <button className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm px-4 py-2 rounded-md font-medium transition">
-            + Create Pour Card
-          </button>
-          <button className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-md font-medium transition">
-            + Submit Subcontractor RA Bill
-          </button>
-        </div>
-      </div>
+        <button type="submit" className="rounded px-4 py-2 text-sm font-medium text-white" style={{ background: "var(--bo-primary)" }}>Reorder report</button>
+      </form>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gross RA Billed (Aug)</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">₹35.00 Lakh</div>
+      {projectId && (
+        <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--bo-border)" }}>
+          {rows.map((r) => (
+            <div key={r.materialId} className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>
+              <div>
+                <div className="font-medium">{r.materialName}</div>
+                <div className="text-xs" style={{ color: "var(--bo-text-muted)" }}>
+                  stock {r.stockQty} · coverage {r.coverageDays === Infinity ? "∞" : `${r.coverageDays}d`} · inbound {r.inboundPoQty}
+                </div>
+              </div>
+              <span className="rounded px-2 py-1 text-xs" style={{ background: "var(--bo-bg)" }}>{r.alert}</span>
+            </div>
+          ))}
+          {rows.length === 0 && <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--bo-text-muted)" }}>No stock rows.</div>}
         </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Retention Retained (5%)</div>
-          <div className="text-xl font-bold text-emerald-700 mt-1">₹1.75 Lakh</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pour Cards Approved</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">12 Pours (100% Cleared)</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">HSE Site Safety Rating</div>
-          <div className="text-xl font-bold text-emerald-700 mt-1">95 / 100 (EXCELLENT)</div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 font-bold text-slate-800 text-sm">
-          Subcontractor Running Account (RA) Bills
-        </div>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200 text-xs">
-            <tr>
-              <th className="p-3">RA Bill No</th>
-              <th className="p-3">Contractor Name</th>
-              <th className="p-3">Period</th>
-              <th className="p-3">Gross Billed</th>
-              <th className="p-3">Retention (5%)</th>
-              <th className="p-3">TDS 194C</th>
-              <th className="p-3">Net Payable</th>
-              <th className="p-3">Status</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {bills.map((bill) => (
-              <tr key={bill.id} className="hover:bg-slate-50 transition">
-                <td className="p-3 font-semibold text-emerald-700">{bill.billNo}</td>
-                <td className="p-3 font-medium text-slate-900">{bill.contractorName}</td>
-                <td className="p-3 text-xs text-slate-600 font-mono">{bill.period}</td>
-                <td className="p-3 font-mono text-slate-900">
-                  ₹{(Number(bill.grossValPaise) / 100).toLocaleString("en-IN")}
-                </td>
-                <td className="p-3 font-mono text-emerald-700">
-                  ₹{(Number(bill.retentionPaise) / 100).toLocaleString("en-IN")}
-                </td>
-                <td className="p-3 font-mono text-slate-600">
-                  ₹{(Number(bill.tdsPaise) / 100).toLocaleString("en-IN")}
-                </td>
-                <td className="p-3 font-mono font-bold text-slate-900">
-                  ₹{(Number(bill.netPayablePaise) / 100).toLocaleString("en-IN")}
-                </td>
-                <td className="p-3">
-                  <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${
-                      bill.status === "certified"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {bill.status}
-                  </span>
-                </td>
-                <td className="p-3 text-right space-x-2">
-                  <button className="bg-slate-900 hover:bg-slate-800 text-white text-xs px-3 py-1 rounded transition font-medium">
-                    Certify Bill
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+      )}
+    </main>
   );
 }

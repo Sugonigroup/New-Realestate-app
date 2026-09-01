@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { serverApi } from "@/lib/api";
+import { SALES_NAV, Subnav } from "@/app/subnav";
 
 interface Unit {
   id: string;
@@ -43,6 +44,7 @@ export default async function InventoryPage({
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Inventory Explorer</h1>
+      <Subnav items={SALES_NAV} />
 
       <form className="mb-6 flex items-end gap-3" method="get">
         <div>

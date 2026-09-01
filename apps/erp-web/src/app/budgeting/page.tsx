@@ -1,126 +1,52 @@
-"use client";
+import { MoneyText } from "@buildos/ui";
+import { asPaise, loadList } from "@/lib/load";
+import Link from "next/link";
+import { PostButton } from "@/app/post-button";
+import CreateBudgetForm from "./create-form";
 
-import React, { useState } from "react";
-
-interface BudgetVarianceItem {
-  costCenter: string;
-  accountCode: string;
-  budgetPaise: bigint;
-  actualPaise: bigint;
-  variancePct: number;
-  alert: "GREEN" | "AMBER" | "RED";
+interface BudgetLine { costCenter: string; accountCode: string; period: string; amountPaise: string }
+interface Budget {
+  id: string;
+  fiscalYear: string;
+  title: string;
+  versionNo: number;
+  status: string;
+  totalPaise: string;
+  lines?: BudgetLine[];
 }
 
-const VARIANCE_DATA: BudgetVarianceItem[] = [
-  {
-    costCenter: "CC-SITE-TOWER-A",
-    accountCode: "5000-CEMENT-OPC",
-    budgetPaise: 45_00_000_00n, // ₹45.00 Lakh
-    actualPaise: 47_25_000_00n, // ₹47.25 Lakh
-    variancePct: 5,
-    alert: "GREEN",
-  },
-  {
-    costCenter: "CC-SITE-TOWER-A",
-    accountCode: "5000-LABOR-CONTRACT",
-    budgetPaise: 30_00_000_00n, // ₹30.00 Lakh
-    actualPaise: 33_60_000_00n, // ₹33.60 Lakh
-    variancePct: 12,
-    alert: "AMBER",
-  },
-  {
-    costCenter: "CC-EXEC-OFFICE",
-    accountCode: "5000-ADMIN-TRAVEL",
-    budgetPaise: 5_00_000_00n, // ₹5.00 Lakh
-    actualPaise: 6_25_000_00n, // ₹6.25 Lakh
-    variancePct: 25,
-    alert: "RED",
-  },
-];
-
-export default function BudgetingVariancePage() {
-  const [data] = useState<BudgetVarianceItem[]>(VARIANCE_DATA);
+/** Enterprise budgets from GET /v1/budgeting/budgets. */
+export default async function BudgetingPage() {
+  const rows = await loadList<Budget>("/v1/budgeting/budgets");
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">FP&A Budget vs Actual Variance</h1>
-          <p className="text-sm text-slate-600">Period variance monitoring against approved operating budgets with automated alerts</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm px-4 py-2 rounded-md font-medium transition">
-            Simulate Scenario
-          </button>
-          <button className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-md font-medium transition">
-            + New Budget (FY27)
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Period Budget</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">₹80.00 Lakh</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Period Actuals</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">₹87.10 Lakh</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Overall Variance</div>
-          <div className="text-xl font-bold text-amber-700 mt-1">+8.87% (Amber)</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-slate-200">
-          <div className="text-xs font-semibold text-rose-600 uppercase tracking-wider">Red Flagged Line Items</div>
-          <div className="text-xl font-bold text-rose-700 mt-1">1 Account (&gt;20%)</div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-600 font-medium border-b border-slate-200 text-xs">
-            <tr>
-              <th className="p-3">Cost Center</th>
-              <th className="p-3">Account Code</th>
-              <th className="p-3">Budgeted</th>
-              <th className="p-3">Actual Spent</th>
-              <th className="p-3">Variance %</th>
-              <th className="p-3">Alert Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {data.map((item, idx) => (
-              <tr key={idx} className="hover:bg-slate-50 transition">
-                <td className="p-3 font-semibold text-slate-800">{item.costCenter}</td>
-                <td className="p-3 font-mono text-xs text-slate-600">{item.accountCode}</td>
-                <td className="p-3 font-mono text-slate-900">
-                  ₹{(Number(item.budgetPaise) / 100).toLocaleString("en-IN")}
-                </td>
-                <td className="p-3 font-mono text-slate-900 font-medium">
-                  ₹{(Number(item.actualPaise) / 100).toLocaleString("en-IN")}
-                </td>
-                <td className="p-3 font-mono font-semibold">
-                  +{item.variancePct}%
-                </td>
-                <td className="p-3">
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold ${
-                      item.alert === "GREEN"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : item.alert === "AMBER"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-rose-100 text-rose-800"
-                    }`}
-                  >
-                    {item.alert} ({item.alert === "GREEN" ? "<10%" : item.alert === "AMBER" ? "10-20%" : ">20%"})
-                  </span>
-                </td>
-              </tr>
+    <main className="p-6">
+      <h1 className="mb-1 text-xl font-semibold">Budgeting</h1>
+      <p className="mb-4 text-sm" style={{ color: "var(--bo-text-muted)" }}>FP&amp;A versions and line allocations</p>
+      <CreateBudgetForm />
+      <div className="space-y-4">
+        {rows.map((b) => (
+          <div key={b.id} className="rounded-lg border p-4" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <div className="font-medium">{b.fiscalYear} · {b.title} · v{b.versionNo}</div>
+              <div className="flex items-center gap-3">
+                <MoneyText paise={asPaise(b.totalPaise)} />
+                <span className="rounded px-2 py-1 text-xs" style={{ background: "var(--bo-bg)" }}>{b.status}</span>
+                <Link href={`/budgeting/variance?budgetId=${b.id}`} className="text-xs" style={{ color: "var(--bo-primary)" }}>variance</Link>
+                {b.status === "draft" && <PostButton path={`/v1/budgeting/budgets/${b.id}/approve`} label="Approve" />}
+                {b.status === "approved" && <PostButton path={`/v1/budgeting/budgets/${b.id}/lock`} label="Lock" />}
+              </div>
+            </div>
+            {(b.lines ?? []).map((l, i) => (
+              <div key={i} className="flex justify-between border-t py-2 text-xs" style={{ borderColor: "var(--bo-border)", color: "var(--bo-text-muted)" }}>
+                <span>{l.costCenter} · {l.accountCode} · {l.period}</span>
+                <MoneyText paise={asPaise(l.amountPaise)} />
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        ))}
+        {rows.length === 0 && <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--bo-text-muted)" }}>No budgets.</div>}
       </div>
-    </div>
+    </main>
   );
 }

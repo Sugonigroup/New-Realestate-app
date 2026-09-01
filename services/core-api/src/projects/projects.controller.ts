@@ -36,6 +36,13 @@ export class ProjectsController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get()
+  async list(): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    return this.projects.list(ctx!.tenantId!);
+  }
+
   @Post(":projectId/activities")
   async addActivity(@Param("projectId") projectId: string, @Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("projects.wbs.edit");

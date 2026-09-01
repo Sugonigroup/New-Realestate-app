@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CRM_NAV, Subnav } from "@/app/subnav";
 
 interface Opp {
   oppNo: string;
@@ -76,6 +77,7 @@ export default function OpportunityKanbanPage() {
         <h1 className="text-xl font-semibold">Opportunity Pipeline Kanban</h1>
         {dragNo && <span className="text-xs text-slate-500">dragging {dragNo}</span>}
       </div>
+      <Subnav items={CRM_NAV} />
       {error && <p className="mb-3 text-sm" style={{ color: "var(--bo-danger)" }}>{error}</p>}
       {loading ? (
         <p style={{ color: "var(--bo-text-muted)" }}>Loading pipeline…</p>

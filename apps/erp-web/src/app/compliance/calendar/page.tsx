@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { serverApi } from "@/lib/api";
+import { COMPLIANCE_NAV, Subnav } from "@/app/subnav";
 
 interface StatutoryItem { kind: string; label: string; period: string; dueOn: string; ownerRole: string }
 
@@ -19,6 +20,7 @@ export default async function CalendarPage({
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Statutory calendar — {month}/{year}</h1>
+      <Subnav items={COMPLIANCE_NAV} />
       <div className="rounded-lg border" style={{ borderColor: "var(--bo-border)" }}>
         {items.map((i) => (
           <div key={i.kind} className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>

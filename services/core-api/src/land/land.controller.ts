@@ -33,6 +33,20 @@ export class LandController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get("parcels")
+  async listParcels(): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    return this.land.listParcels(ctx!.tenantId!);
+  }
+
+  @Get("jdas")
+  async listJdas(): Promise<unknown> {
+    await this.permissions.requireAsync("projects.read");
+    const ctx = getRequestContext();
+    return this.land.listJdas(ctx!.tenantId!);
+  }
+
   @Post("parcels")
   async registerParcel(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("projects.read");

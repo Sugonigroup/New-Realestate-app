@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { serverApi } from "@/lib/api";
+import { SALES_NAV, Subnav } from "@/app/subnav";
 
 interface Booking {
   id: string;
@@ -56,6 +57,7 @@ export default async function BookingsPage() {
           New booking from inventory →
         </Link>
       </div>
+      <Subnav items={SALES_NAV} />
       <DataTable<Booking> data={bookings} columns={columns} />
     </main>
   );

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { browserApi } from "@/lib/api";
+import { CRM_NAV, Subnav } from "@/app/subnav";
 
 interface Lead {
   id: string;
@@ -58,10 +59,16 @@ export default function CrmInboxPage() {
     <main className="p-6">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Lead Inbox</h1>
-        <Link href="/crm/leads/import" className="text-sm" style={{ color: "var(--bo-primary)" }}>
-          Import CSV
-        </Link>
+        <div className="flex gap-4">
+          <Link href="/crm/leads/import" className="text-sm" style={{ color: "var(--bo-primary)" }}>
+            Import CSV
+          </Link>
+          <Link href="/crm/export" className="text-sm" style={{ color: "var(--bo-primary)" }}>
+            Export
+          </Link>
+        </div>
       </div>
+      <Subnav items={CRM_NAV} />
       {error && <p style={{ color: "var(--bo-danger)" }}>{error}</p>}
       {leads.length === 0 && !error ? (
         <p style={{ color: "var(--bo-text-muted)" }}>No leads yet — capture some via the webhook or CSV import.</p>

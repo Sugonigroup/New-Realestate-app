@@ -22,6 +22,15 @@ export class AssetsService {
 
   // ── Asset Registry ──────────────────────────────────────────────────────
 
+  async listAssets(tenantId: string) {
+    return this.prisma.asset.findMany({
+      where: { tenantId },
+      orderBy: { assetTag: "asc" },
+      take: 200,
+      include: { workOrders: true, plans: true },
+    });
+  }
+
   async createAsset(tenantId: string, input: {
     assetTag: string;
     name: string;

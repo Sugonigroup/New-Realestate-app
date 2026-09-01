@@ -9,6 +9,22 @@ import { evaluateAttendance, aggregateMuster, type GeoFence, type AttendanceChec
 export class HrService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listEmployees(tenantId: string) {
+    return this.prisma.employee.findMany({
+      where: { tenantId },
+      orderBy: { code: "asc" },
+      take: 200,
+    });
+  }
+
+  async listPayrollRuns(tenantId: string) {
+    return this.prisma.payrollRun.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+  }
+
   /** Geo-attendance check with anomaly detection. */
   async checkIn(tenantId: string, input: {
     employeeId: string;

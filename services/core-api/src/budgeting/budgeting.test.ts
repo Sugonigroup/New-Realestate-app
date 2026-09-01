@@ -33,7 +33,7 @@ function fakePrisma() {
       findMany: vi.fn(async ({ where, orderBy }: any) => {
         let res = db.budgets.filter(match(where));
         if (orderBy?.versionNo === "desc") res.sort((a, b) => (b.versionNo as number) - (a.versionNo as number));
-        return res;
+        return res.map((b) => ({ ...b, lines: db.lines.filter((x) => x.budgetId === b.id) }));
       }),
       findFirst: vi.fn(async ({ where, include }: any) => {
         const b = db.budgets.find(match(where));
@@ -180,5 +180,15 @@ describe("BudgetingService", () => {
 
     const off = report.items.find((i) => i.accountCode === "5000-OFF")!;
     expect(off.alert).toBe("RED");
+  });
+
+  it("lists budgets with line items", async () => {
+    await svc.createBudget(T, {
+      fiscalYear: "FY27", title: "Ops",
+      lines: [{ costCenter: "CC-1", accountCode: "5000", period: "2026-09", amountPaise: 100n }],
+    });
+    const rows = await svc.listBudgets(T) as Array<{ title: string; lines: unknown[] }>;
+    expect(rows[0]!.title).toBe("Ops");
+    expect(rows[0]!.lines).toHaveLength(1);
   });
 });

@@ -26,6 +26,13 @@ export class MarketingController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get("campaigns")
+  async list(): Promise<unknown> {
+    await this.permissions.requireAsync("marketing.read");
+    const ctx = getRequestContext();
+    return this.marketing.listCampaigns(ctx!.tenantId!);
+  }
+
   @Post("campaigns")
   async create(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("marketing.read");

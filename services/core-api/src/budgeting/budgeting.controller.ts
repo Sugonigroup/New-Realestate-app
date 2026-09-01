@@ -30,6 +30,13 @@ export class BudgetingController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get("budgets")
+  async listBudgets(): Promise<unknown> {
+    await this.permissions.requireAsync("reports.read");
+    const ctx = getRequestContext();
+    return this.budgeting.listBudgets(ctx!.tenantId!);
+  }
+
   @Post("budgets")
   async createBudget(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("reports.read");

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CRM_NAV, Subnav } from "@/app/subnav";
+import { browserApi } from "@/lib/api";
 
 const CORE_API = process.env.NEXT_PUBLIC_CORE_API ?? "http://localhost:8080";
 const readCookie = (k: string) => document.cookie.split("; ").find((c) => c.startsWith(k + "="))?.split("=")[1] ?? null;
@@ -25,6 +27,7 @@ export default function WorkQueuePage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sweeping, setSweeping] = useState(false);
 
   useEffect(() => {
     fetch(`${CORE_API}/v1/crm/work-queue`, { headers: { authorization: `Bearer ${readCookie("access_token") ?? ""}` } })
@@ -37,9 +40,22 @@ export default function WorkQueuePage() {
   return (
     <div className="mx-auto max-w-md p-4">
       <h1 className="mb-1 text-xl font-semibold">Today&apos;s Work Queue</h1>
+      <Subnav items={CRM_NAV} />
       <p className="mb-4 text-sm" style={{ color: "var(--bo-text-muted)" }}>
         SLA calls first, then tasks, then win-backs — ordered by urgency
       </p>
+      <button
+        type="button"
+        disabled={sweeping}
+        onClick={() => {
+          setSweeping(true);
+          browserApi().post("/v1/crm/automation/sla-sweep", {}).catch((e: Error) => setError(e.message)).finally(() => setSweeping(false));
+        }}
+        className="mb-4 rounded px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+        style={{ background: "var(--bo-primary)" }}
+      >
+        {sweeping ? "Sweeping…" : "Run SLA sweep"}
+      </button>
       {error && <p className="mb-3 text-sm" style={{ color: "var(--bo-danger)" }}>{error}</p>}
       {loading ? (
         <p style={{ color: "var(--bo-text-muted)" }}>Loading…</p>

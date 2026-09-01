@@ -8,6 +8,14 @@ import { attribute, efficiency, type AttributionModel, type Touch, type BookingR
 export class MarketingService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listCampaigns(tenantId: string) {
+    return this.prisma.campaign.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
+
   async createCampaign(tenantId: string, input: { name: string; channel: string; projectId?: string }): Promise<unknown> {
     return this.prisma.campaign.create({ data: { tenantId, ...input } });
   }

@@ -50,6 +50,14 @@ function fakePrisma() {
         Object.assign(r, data);
         return r;
       }),
+      findMany: vi.fn(async ({ where, include }: any) =>
+        db.contracts.filter(match(where)).map((c) => ({
+          ...c,
+          clauses: include?.clauses ? db.clauses.filter((x) => x.contractId === c.id) : undefined,
+          claims: include?.claims ? db.claims.filter((x) => x.contractId === c.id) : undefined,
+          obligations: include?.obligations ? db.obligations.filter((x) => x.contractId === c.id) : undefined,
+        })),
+      ),
     },
     contractClause: {
       create: vi.fn(async ({ data }: any) => {
@@ -169,5 +177,14 @@ describe("ContractsService", () => {
     expect(risk.openClaimsCount).toBe(1);
     expect(risk.highRiskClausesCount).toBe(4);
     expect(risk.riskLevel).toBe("HIGH"); // >20% exposure + >3 high risk clauses
+  });
+
+  it("lists contracts with clauses and claims for the tenant", async () => {
+    f.db.contracts.push({ id: "c-list", tenantId: T, contractNo: "CTR-LIST", status: "active" });
+    f.db.clauses.push({ id: "cl-l", tenantId: T, contractId: "c-list", riskLevel: "high" });
+    const rows = await svc.listContracts(T) as Array<{ contractNo: string; clauses: unknown[] }>;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.contractNo).toBe("CTR-LIST");
+    expect(rows[0]!.clauses).toHaveLength(1);
   });
 });

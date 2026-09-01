@@ -37,6 +37,7 @@ function makeFake() {
         return { id: "c1", ...data };
       }),
     },
+    tenant: { findUnique: vi.fn(async ({ where }: { where: { slug: string } }) => (where.slug === "shree-developers" ? { id: "t-1", slug: where.slug } : null)) },
     session: { create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: "s-1", ...data })) },
   };
   const notify = { send: vi.fn(async () => ({ messageId: "m1", status: "sent" })) };
@@ -109,5 +110,13 @@ describe("PortalService (WP-2D)", () => {
     await svc.setConsent("t-1", PHONE, "whatsapp", "promotional", false);
     const consents = (await svc.consents("t-1", PHONE)) as Array<{ granted: boolean; purpose: string }>;
     expect(consents[0]).toMatchObject({ purpose: "promotional", granted: false });
+  });
+
+  it("resolves tenant from slug when no JWT tenant is present", async () => {
+    const { svc } = makeFake();
+    await expect(svc.resolveTenantId("t-jwt", "ignored")).resolves.toBe("t-jwt");
+    await expect(svc.resolveTenantId(undefined, "shree-developers")).resolves.toBe("t-1");
+    await expectReject(() => svc.resolveTenantId(undefined, undefined), "Organization is required");
+    await expectReject(() => svc.resolveTenantId(undefined, "missing"), "Unknown organization");
   });
 });

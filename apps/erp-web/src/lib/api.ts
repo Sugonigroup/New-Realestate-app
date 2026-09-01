@@ -30,3 +30,13 @@ export function browserApi(): ApiClient {
     },
   });
 }
+
+/** Buyer portal: JWT in portal_access_token; no refresh (OTP re-login). */
+export function portalBrowserApi(): ApiClient {
+  const read = (k: string) => document.cookie.split("; ").find((c) => c.startsWith(k + "="))?.split("=")[1] ?? null;
+  return new ApiClient({
+    baseUrl: process.env.NEXT_PUBLIC_CORE_API ?? CORE_API,
+    getToken: () => read("portal_access_token"),
+    refresh: async () => null,
+  });
+}

@@ -5,8 +5,8 @@ import { z } from "zod";
 import { getRequestContext } from "../common/request-context.js";
 import { PortalService } from "./portal.service.js";
 
-const sendOtpDto = z.object({ phone: z.string().regex(/^\+91\d{10}$/) });
-const verifyDto = z.object({ phone: z.string().regex(/^\+91\d{10}$/), code: z.string().regex(/^\d{6}$/) });
+const sendOtpDto = z.object({ phone: z.string().regex(/^\+91\d{10}$/), tenantSlug: z.string().min(1).optional() });
+const verifyDto = z.object({ phone: z.string().regex(/^\+91\d{10}$/), code: z.string().regex(/^\d{6}$/), tenantSlug: z.string().min(1).optional() });
 const consentDto = z.object({
   channel: z.enum(["whatsapp", "email", "sms"]),
   purpose: z.enum(["transactional", "promotional"]),
@@ -29,16 +29,16 @@ export class PortalController {
 
   @Post("otp/send")
   async sendOtp(@Body() body: unknown): Promise<unknown> {
-    const { phone } = sendOtpDto.parse(body);
+    const { phone, tenantSlug } = sendOtpDto.parse(body);
     const ctx = getRequestContext();
-    return this.portal.sendOtp(ctx!.tenantId!, phone);
+    return this.portal.sendOtp(await this.portal.resolveTenantId(ctx?.tenantId, tenantSlug), phone);
   }
 
   @Post("otp/verify")
   async verify(@Body() body: unknown): Promise<unknown> {
-    const { phone, code } = verifyDto.parse(body);
+    const { phone, code, tenantSlug } = verifyDto.parse(body);
     const ctx = getRequestContext();
-    return this.portal.verifyOtp(ctx!.tenantId!, phone, code);
+    return this.portal.verifyOtp(await this.portal.resolveTenantId(ctx?.tenantId, tenantSlug), phone, code);
   }
 
   @Get("home")

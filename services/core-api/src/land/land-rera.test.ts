@@ -25,6 +25,7 @@ function fakePrisma() {
   const prisma = {
     landParcel: {
       findFirst: vi.fn(async ({ where }: any) => db.parcels.find(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.parcels.filter(match(where))),
       create: vi.fn(async ({ data }: any) => { const r = { id: nid("pcl"), ...data }; db.parcels.push(r); return r; }),
     },
     jointDevelopmentAgreement: {
@@ -35,6 +36,10 @@ function fakePrisma() {
         if (include?.landParcel) res.landParcel = db.parcels.find((x) => x.id === j.landParcelId);
         return res;
       }),
+      findMany: vi.fn(async ({ where, include }: any) => db.jdas.filter(match(where)).map((j) => ({
+        ...j,
+        landParcel: include?.landParcel ? db.parcels.find((x) => x.id === j.landParcelId) : undefined,
+      }))),
       create: vi.fn(async ({ data }: any) => { const r = { id: nid("jda"), ...data }; db.jdas.push(r); return r; }),
     },
     reraCertificate: {
@@ -102,6 +107,11 @@ describe("Land Acquisition (LAND-01) & RERA Escrow Gate (RERA-01)", () => {
     expect(split.landownerAreaSqFt).toBe(70000); // 35% of 200,000 sq ft
     expect(split.landownerRevenuePaise).toBe(175_00_00_000_00n); // ₹175 Cr (35%)
     expect(split.developerRevenuePaise).toBe(325_00_00_000_00n); // ₹325 Cr (65%)
+
+    const parcels = await landSvc.listParcels(T) as Array<{ parcelNo: string }>;
+    expect(parcels.map((p) => p.parcelNo)).toContain("PCL-02");
+    const jdas = await landSvc.listJdas(T) as Array<{ jdaNo: string }>;
+    expect(jdas[0]!.jdaNo).toBe("JDA-02");
   });
 
   // ── RERA-01 Certificates & Escrow Withdrawal Gate ──────────────────────

@@ -38,6 +38,23 @@ export class LandService {
     });
   }
 
+  async listParcels(tenantId: string) {
+    return this.prisma.landParcel.findMany({
+      where: { tenantId },
+      orderBy: { parcelNo: "asc" },
+      take: 200,
+    });
+  }
+
+  async listJdas(tenantId: string) {
+    return this.prisma.jointDevelopmentAgreement.findMany({
+      where: { tenantId },
+      include: { landParcel: true },
+      orderBy: { jdaNo: "asc" },
+      take: 200,
+    });
+  }
+
   async executeJda(tenantId: string, input: {
     jdaNo: string;
     landParcelId: string;

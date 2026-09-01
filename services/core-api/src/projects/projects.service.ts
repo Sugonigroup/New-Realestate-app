@@ -9,6 +9,15 @@ import { scanExpiries } from "./site-ops.js";
 export class ProjectsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async list(tenantId: string) {
+    return this.prisma.project.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: { id: true, code: true, name: true, status: true, city: true, reraNumber: true },
+    });
+  }
+
   async addActivity(tenantId: string, projectId: string, input: { code: string; name: string; durationDays: number; deps: string[] }): Promise<unknown> {
     return this.prisma.constructionActivity.create({
       data: { tenantId, projectId, code: input.code, name: input.name, durationDays: input.durationDays, deps: input.deps },

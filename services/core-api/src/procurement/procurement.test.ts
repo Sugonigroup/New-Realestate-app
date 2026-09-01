@@ -38,6 +38,7 @@ function fakePrisma() {
   const prisma = {
     vendor: {
       findFirst: vi.fn(async ({ where }: any) => db.vendors.find(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.vendors.filter(match(where))),
       create: vi.fn(async ({ data }: any) => { const r = toRow({ id: nid("v"), ...data }); db.vendors.push(r); return r; }),
     },
     purchaseRequisition: {
@@ -54,6 +55,12 @@ function fakePrisma() {
         Object.assign(r, data);
         return r;
       }),
+      findMany: vi.fn(async ({ where, include }: any) => {
+        return db.prs.filter(match(where)).map((r) => ({
+          ...r,
+          lines: include?.lines ? db.prLines.filter((l) => l.requisitionId === r.id) : undefined,
+        }));
+      }),
     },
     rfq: {
       findFirst: vi.fn(async ({ where }: any) => db.rfqs.find(match(where))),
@@ -65,6 +72,12 @@ function fakePrisma() {
         return r;
       }),
       update: vi.fn(async ({ where, data }: any) => { const r = db.rfqs.find((x) => x.id === where.id)!; Object.assign(r, data); return r; }),
+      findMany: vi.fn(async ({ where, include }: any) => {
+        return db.rfqs.filter(match(where)).map((r) => ({
+          ...r,
+          lines: include?.lines ? db.rfqLines.filter((l) => l.rfqId === r.id) : undefined,
+        }));
+      }),
     },
     rfqLine: { findMany: vi.fn(async ({ where }: any) => db.rfqLines.filter(match(where))) },
     rfqQuote: {
@@ -107,7 +120,12 @@ function fakePrisma() {
     },
     grn: {
       findFirst: vi.fn(async ({ where }: any) => db.grns.find(match(where))),
-      findMany: vi.fn(async ({ where }: any) => db.grns.filter(match(where))),
+      findMany: vi.fn(async ({ where, include }: any) => {
+        return db.grns.filter(match(where)).map((r) => ({
+          ...r,
+          lines: include?.lines ? db.grnLines.filter((l) => l.grnId === r.id) : undefined,
+        }));
+      }),
       create: vi.fn(async ({ data }: any) => {
         const r = toRow({ id: nid("grn"), status: "posted", ...data });
         r.order = db.pos.find((x) => x.id === data.orderId);
@@ -366,5 +384,33 @@ describe("ProcurementService chain", () => {
       grnNo: "GRN-Z", orderId: po.id, projectId: PROJECT, receivedAt: new Date(),
       lines: [{ poLineId: "pol-from-elsewhere", qty: 1, acceptedQty: 1 }],
     })).rejects.toThrow(BadRequestException);
+  });
+
+  it("lists purchase requisitions with lines", async () => {
+    f.db.prs.push({ id: "pr-list", tenantId: T, reqNo: "PR-L", projectId: PROJECT, status: "draft" });
+    f.db.prLines.push({ id: "ln-list", requisitionId: "pr-list", materialId: "M-CEM", qty: 10 });
+    const rows = await svc.listPrs(T) as Array<{ reqNo: string; lines: unknown[] }>;
+    expect(rows[0]!.reqNo).toBe("PR-L");
+    expect(rows[0]!.lines).toHaveLength(1);
+  });
+
+  it("lists vendors for the tenant", async () => {
+    f.db.vendors.push({ id: "v-list", tenantId: T, code: "V-L", name: "Steel Co" });
+    const rows = await svc.listVendors(T) as Array<{ code: string }>;
+    expect(rows.map((r) => r.code)).toContain("V-L");
+  });
+
+  it("lists RFQs for the tenant", async () => {
+    f.db.rfqs.push({ id: "rfq-l", tenantId: T, rfqNo: "RFQ-L", status: "open" });
+    const rows = await svc.listRfqs(T) as Array<{ rfqNo: string }>;
+    expect(rows[0]!.rfqNo).toBe("RFQ-L");
+  });
+
+  it("lists GRNs with lines", async () => {
+    f.db.grns.push({ id: "g-list", tenantId: T, grnNo: "GRN-L", orderId: "po-1", projectId: PROJECT, status: "posted", receivedAt: new Date() });
+    f.db.grnLines.push({ id: "gl-list", grnId: "g-list", poLineId: "pol-1", qty: 10, acceptedQty: 8, rejectedQty: 2 });
+    const rows = await svc.listGrns(T) as Array<{ grnNo: string; lines: unknown[] }>;
+    expect(rows[0]!.grnNo).toBe("GRN-L");
+    expect(rows[0]!.lines).toHaveLength(1);
   });
 });

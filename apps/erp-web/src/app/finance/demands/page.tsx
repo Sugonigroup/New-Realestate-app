@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { MoneyText } from "@buildos/ui";
 import { serverApi } from "@/lib/api";
 import GenerateForm from "./generate-form";
+import { FINANCE_NAV, Subnav } from "@/app/subnav";
 
 interface Demand {
   id: string;
@@ -30,7 +32,11 @@ export default async function DemandsPage({
 
   return (
     <main className="p-6">
-      <h1 className="mb-4 text-xl font-semibold">Demands console</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Demands console</h1>
+        <Link href="/finance/ledger" className="text-sm" style={{ color: "var(--bo-primary)" }}>Ledger →</Link>
+      </div>
+      <Subnav items={FINANCE_NAV} />
 
       {generated && (
         <p className="mb-4 rounded border p-3 text-sm" style={{ borderColor: "var(--bo-success)", background: "var(--bo-surface)" }}>
