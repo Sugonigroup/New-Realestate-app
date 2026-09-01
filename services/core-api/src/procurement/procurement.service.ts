@@ -37,6 +37,14 @@ export class ProcurementService {
     });
   }
 
+  async listVendors(tenantId: string) {
+    return this.prisma.vendor.findMany({
+      where: { tenantId },
+      orderBy: { code: "asc" },
+      take: 200,
+    });
+  }
+
   /** Vendor rating from GRN history: on-time delivery vs PO promised date + accepted qty %. */
   async vendorRating(tenantId: string, vendorId: string) {
     const vendor = await this.prisma.vendor.findFirst({ where: { tenantId, id: vendorId } });
@@ -69,6 +77,15 @@ export class ProcurementService {
   }
 
   // ── Purchase Requisition ────────────────────────────────────────────────
+
+  async listPrs(tenantId: string) {
+    return this.prisma.purchaseRequisition.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: { lines: true },
+    });
+  }
 
   async createPr(tenantId: string, input: {
     reqNo: string;
@@ -119,6 +136,15 @@ export class ProcurementService {
   }
 
   // ── RFQ ─────────────────────────────────────────────────────────────────
+
+  async listRfqs(tenantId: string) {
+    return this.prisma.rfq.findMany({
+      where: { tenantId },
+      include: { lines: true },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
 
   /** Issue an RFQ against an approved PR — RFQ lines are copied from PR lines. */
   async createRfq(tenantId: string, input: { rfqNo: string; requisitionId: string; closesAt?: Date }) {
@@ -278,6 +304,15 @@ export class ProcurementService {
   }
 
   // ── GRN ─────────────────────────────────────────────────────────────────
+
+  async listGrns(tenantId: string) {
+    return this.prisma.grn.findMany({
+      where: { tenantId },
+      include: { lines: true },
+      orderBy: { receivedAt: "desc" },
+      take: 200,
+    });
+  }
 
   /** Goods receipt: per-line accepted/rejected, capped at PO balance; updates stock + PO progress. */
   async receiveGrn(tenantId: string, input: {

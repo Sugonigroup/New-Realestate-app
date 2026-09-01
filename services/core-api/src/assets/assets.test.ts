@@ -39,6 +39,13 @@ function fakePrisma() {
         Object.assign(r, data);
         return r;
       }),
+      findMany: vi.fn(async ({ where, include }: any) =>
+        db.assets.filter(match(where)).map((a) => ({
+          ...a,
+          workOrders: include?.workOrders ? db.workOrders.filter((x) => x.assetId === a.id) : undefined,
+          plans: include?.plans ? db.plans.filter((x) => x.assetId === a.id) : undefined,
+        })),
+      ),
     },
     maintenancePlan: {
       create: vi.fn(async ({ data }: any) => {
@@ -190,5 +197,14 @@ describe("AssetsService", () => {
     expect(rel.totalDowntimeHours).toBe(8);
     expect(rel.mttrHours).toBe(4); // 8h total downtime / 2 failures = 4 hours
     expect(rel.mtbfHours).toBe(496); // (1000 operating - 8 downtime) / 2 = 496 hours
+  });
+
+  it("lists assets for the tenant", async () => {
+    await svc.createAsset(T, {
+      assetTag: "CRANE-01", name: "Tower Crane", category: "heavy_machinery",
+      purchaseDate: new Date("2024-01-01"), purchaseValPaise: 1_00_00_000n, usefulLifeMonths: 120,
+    });
+    const rows = await svc.listAssets(T) as Array<{ assetTag: string }>;
+    expect(rows.map((r) => r.assetTag)).toContain("CRANE-01");
   });
 });

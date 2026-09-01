@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { serverApi } from "@/lib/api";
+import { ADMIN_NAV, Subnav } from "@/app/subnav";
 
 interface RoleRow { code: string; name: string; external: boolean; grants: string[]; denied: string[] }
 
@@ -22,6 +23,7 @@ export default async function RolesPage() {
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Role matrix</h1>
+      <Subnav items={ADMIN_NAV} />
       <DataTable<RoleRow> data={roles} columns={columns} />
     </main>
   );

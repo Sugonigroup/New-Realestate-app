@@ -20,6 +20,26 @@ const STAGE_FLOW: Record<string, string> = {
 export class HrLifecycleService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async listCandidates(tenantId: string) {
+    return this.prisma.jobCandidate.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: {
+        requisition: { select: { reqNo: true, position: true, status: true } },
+        offers: { orderBy: { createdAt: "desc" }, take: 5 },
+      },
+    });
+  }
+
+  async listRequisitions(tenantId: string) {
+    return this.prisma.jobRequisition.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
+
   // ── Requisitions ────────────────────────────────────────────────────────
 
   async createRequisition(tenantId: string, input: {

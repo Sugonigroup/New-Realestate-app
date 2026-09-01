@@ -28,6 +28,15 @@ export class ContractsService {
 
   // ── Contracts ───────────────────────────────────────────────────────────
 
+  async listContracts(tenantId: string) {
+    return this.prisma.legalContract.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: { clauses: true, claims: true, obligations: true },
+    });
+  }
+
   async createContract(tenantId: string, input: {
     contractNo: string;
     title: string;

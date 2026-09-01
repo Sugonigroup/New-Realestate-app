@@ -55,6 +55,13 @@ export class OpsSupportController {
 
   // ── Risk ────────────────────────────────────────────────────────────────
 
+  @Get("risks")
+  async listRisks(): Promise<unknown> {
+    await this.permissions.requireAsync("reports.read");
+    const ctx = getRequestContext();
+    return this.ops.listRisks(ctx!.tenantId!);
+  }
+
   @Post("risks")
   async registerRisk(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("reports.read");
@@ -71,6 +78,13 @@ export class OpsSupportController {
   }
 
   // ── Customer Service ────────────────────────────────────────────────────
+
+  @Get("tickets")
+  async listTickets(): Promise<unknown> {
+    await this.permissions.requireAsync("reports.read");
+    const ctx = getRequestContext();
+    return this.ops.listTickets(ctx!.tenantId!);
+  }
 
   @Post("tickets")
   async raiseTicket(@Body() body: unknown): Promise<unknown> {
@@ -99,6 +113,13 @@ export class OpsSupportController {
   }
 
   // ── Audit & CAPA ────────────────────────────────────────────────────────
+
+  @Get("findings")
+  async listFindings(): Promise<unknown> {
+    await this.permissions.requireAsync("audit.read");
+    const ctx = getRequestContext();
+    return this.ops.listFindings(ctx!.tenantId!);
+  }
 
   @Post("findings")
   async raiseFinding(@Body() body: unknown): Promise<unknown> {

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { serverApi } from "@/lib/api";
 import WithdrawalForm from "./withdrawal-form";
+import { FINANCE_NAV, Subnav } from "@/app/subnav";
 
 interface EscrowSummary {
   collectedPaise: string;
@@ -33,6 +34,7 @@ export default async function EscrowPage({
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Escrow — RERA 70% rule</h1>
+      <Subnav items={FINANCE_NAV} />
 
       <form className="mb-6 flex items-end gap-3" method="get">
         <div>

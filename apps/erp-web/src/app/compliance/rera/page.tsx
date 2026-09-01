@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { serverApi } from "@/lib/api";
+import { COMPLIANCE_NAV, Subnav } from "@/app/subnav";
 
 const cr = (paise: string | number) => `₹${(Number(paise) / 1e7).toFixed(2)} Cr`;
 
@@ -33,6 +34,7 @@ export default async function ReraPage({
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">RERA compliance</h1>
+      <Subnav items={COMPLIANCE_NAV} />
 
       <form className="mb-6 flex items-end gap-3" method="get">
         <div>

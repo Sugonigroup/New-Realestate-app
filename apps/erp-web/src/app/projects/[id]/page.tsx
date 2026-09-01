@@ -2,6 +2,9 @@ import { cookies } from "next/headers";
 import { StatCard } from "@buildos/ui";
 import { serverApi } from "@/lib/api";
 import Gantt from "./gantt";
+import ActivityForm from "./activity-form";
+import ApprovalForm from "./approval-form";
+import { PROJECT_NAV, Subnav } from "@/app/subnav";
 
 interface CpmNode { es: number; ef: number; ls: number; lf: number; float: number; critical: boolean }
 interface CpmResult { nodes: Record<string, CpmNode>; projectDuration: number; criticalPath: string[] }
@@ -21,10 +24,12 @@ export default async function ProjectDashboardPage({
   let approvals: { expired: Array<{ ref: string }>; expiringSoon: Array<{ ref: string }> } = {
     expired: [], expiringSoon: [],
   };
+  let activities: Array<{ id: string; code: string; name: string; durationDays: number }> = [];
   try {
     schedule = (await api.get<CpmResult>(`/v1/projects/${projectId}/schedule`)) ?? schedule;
     milestones = (await api.get<typeof milestones>(`/v1/projects/${projectId}/milestones`)) ?? [];
     approvals = (await api.get<typeof approvals>(`/v1/projects/${projectId}/approvals`)) ?? [];
+    activities = (await api.get<typeof activities>(`/v1/projects/${projectId}/activities`)) ?? [];
   } catch { /* degraded */ }
 
   const certified = milestones.filter((m) => m.state === "certified").length;
@@ -32,6 +37,7 @@ export default async function ProjectDashboardPage({
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Project dashboard</h1>
+      <Subnav items={PROJECT_NAV} />
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard label="Duration (CPM)" value={`${schedule.projectDuration} d`} />
@@ -64,12 +70,32 @@ export default async function ProjectDashboardPage({
         )}
       </div>
 
+      <h2 className="mb-2 mt-8 text-sm font-medium uppercase" style={{ color: "var(--bo-text-muted)" }}>Activities</h2>
+      <ActivityForm projectId={projectId} />
+      <div className="rounded-lg border" style={{ borderColor: "var(--bo-border)" }}>
+        {activities.map((a) => (
+          <div key={a.id} className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>
+            <div>
+              <span className="font-medium">{a.code}</span>
+              <span className="ml-2">{a.name}</span>
+            </div>
+            <span className="text-xs" style={{ color: "var(--bo-text-muted)" }}>{a.durationDays} d</span>
+          </div>
+        ))}
+        {activities.length === 0 && (
+          <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--bo-text-muted)" }}>No activities.</div>
+        )}
+      </div>
+
       <div className="mt-6 text-sm">
         <a href={`/projects/${projectId}/certify`} className="mr-4" style={{ color: "var(--bo-primary)" }}>Certify a milestone</a>
         <a href={`/projects/${projectId}/snags`} className="mr-4" style={{ color: "var(--bo-primary)" }}>Open NCRs</a>
         <a href={`/projects/${projectId}/hse`} className="mr-4" style={{ color: "var(--bo-primary)" }}>HSE</a>
         <a href={`/projects/${projectId}/approvals`} style={{ color: "var(--bo-primary)" }}>Approvals register</a>
       </div>
+
+      <h2 className="mb-2 mt-8 text-sm font-medium uppercase" style={{ color: "var(--bo-text-muted)" }}>Statutory approvals</h2>
+      <ApprovalForm projectId={projectId} />
     </main>
   );
 }

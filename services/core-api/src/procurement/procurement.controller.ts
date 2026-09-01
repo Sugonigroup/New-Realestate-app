@@ -78,11 +78,25 @@ export class ProcurementController {
     return this.procurement.createVendor(ctx!.tenantId!, dto);
   }
 
+  @Get("vendors")
+  async listVendors(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listVendors(ctx!.tenantId!);
+  }
+
   @Get("vendors/:id/rating")
   async vendorRating(@Param("id") id: string): Promise<unknown> {
     await this.permissions.requireAsync("procurement.read");
     const ctx = getRequestContext();
     return this.procurement.vendorRating(ctx!.tenantId!, id);
+  }
+
+  @Get("prs")
+  async listPrs(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listPrs(ctx!.tenantId!);
   }
 
   @Post("prs")
@@ -97,6 +111,13 @@ export class ProcurementController {
       requiredBy: dto.requiredBy ? new Date(dto.requiredBy) : undefined,
       lines: dto.lines.map((l) => ({ ...l, estRatePaise: BigInt(l.estRatePaise) })),
     });
+  }
+
+  @Get("rfqs")
+  async listRfqs(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listRfqs(ctx!.tenantId!);
   }
 
   @Post("prs/:id/approve")
@@ -150,6 +171,13 @@ export class ProcurementController {
       projectId: dto.projectId,
       promisedDate: dto.promisedDate ? new Date(dto.promisedDate) : undefined,
     });
+  }
+
+  @Get("grns")
+  async listGrns(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listGrns(ctx!.tenantId!);
   }
 
   @Post("grns")

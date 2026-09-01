@@ -46,6 +46,7 @@ function fakePrisma() {
     },
     auditFinding: {
       findFirst: vi.fn(async ({ where }: any) => db.findings.find(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.findings.filter(match(where))),
       create: vi.fn(async ({ data }: any) => {
         const r = { id: nid("fnd"), ...data };
         db.findings.push(r);
@@ -140,5 +141,27 @@ describe("OpsSupportService", () => {
 
     const closed = await svc.closeFinding(T, "AUD-01");
     expect(closed.status).toBe("closed");
+  });
+
+  it("lists risks ordered by score", async () => {
+    await svc.registerRisk(T, {
+      riskNo: "RSK-L", title: "Steel inflation", category: "financial",
+      probability: 4, impact: 5, ownerRole: "cfo",
+    });
+    const rows = await svc.listRisks(T) as Array<{ riskNo: string; riskScore: number }>;
+    expect(rows[0]!.riskNo).toBe("RSK-L");
+    expect(rows[0]!.riskScore).toBe(20);
+  });
+
+  it("lists tickets for the tenant", async () => {
+    f.db.tickets.push({ id: "t-l", tenantId: T, ticketNo: "TKT-L", status: "open" });
+    const rows = await svc.listTickets(T) as Array<{ ticketNo: string }>;
+    expect(rows[0]!.ticketNo).toBe("TKT-L");
+  });
+
+  it("lists audit findings for the tenant", async () => {
+    f.db.findings.push({ id: "f-l", tenantId: T, findingNo: "AUD-L", status: "open" });
+    const rows = await svc.listFindings(T) as Array<{ findingNo: string }>;
+    expect(rows[0]!.findingNo).toBe("AUD-L");
   });
 });

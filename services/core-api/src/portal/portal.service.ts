@@ -34,6 +34,15 @@ export class PortalService {
     private readonly notify: NotificationService,
   ) {}
 
+  /** OTP send/verify can run without a JWT when the buyer supplies the org slug. */
+  async resolveTenantId(ctxTenantId: string | undefined, slug: string | undefined): Promise<string> {
+    if (ctxTenantId) return ctxTenantId;
+    if (!slug) throw new UnauthorizedException({ title: "Organization is required" });
+    const tenant = await this.prisma.tenant.findUnique({ where: { slug } });
+    if (!tenant) throw new UnauthorizedException({ title: "Unknown organization" });
+    return tenant.id;
+  }
+
   async sendOtp(tenantId: string, phone: string): Promise<{ sent: boolean }> {
     // rate limit: 3 sends / 10 min per phone
     const now = Date.now();

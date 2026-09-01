@@ -17,6 +17,7 @@ const LINKS = [
   { href: "/finance/demands", label: "Demands" },
   { href: "/finance/collections", label: "Collections" },
   { href: "/finance/escrow", label: "Escrow" },
+  { href: "/finance/ledger", label: "Ledger" },
 ] as const;
 
 export function FinanceNav() {

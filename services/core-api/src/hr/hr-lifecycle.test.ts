@@ -38,6 +38,7 @@ function fakePrisma() {
         Object.assign(r, data);
         return r;
       }),
+      findMany: vi.fn(async ({ where }: any) => db.reqs.filter(match(where))),
     },
     jobCandidate: {
       findFirst: vi.fn(async ({ where, include }: any) => {
@@ -52,6 +53,13 @@ function fakePrisma() {
         const r = db.candidates.find((x) => x.id === where.id)!;
         Object.assign(r, data);
         return r;
+      }),
+      findMany: vi.fn(async ({ where, include }: any) => {
+        return db.candidates.filter(match(where)).map((c) => ({
+          ...c,
+          requisition: include?.requisition ? db.reqs.find((r) => r.id === c.requisitionId) : undefined,
+          offers: include?.offers ? db.offers.filter((o) => o.candidateId === c.id) : undefined,
+        }));
       }),
     },
     jobOffer: {
@@ -183,5 +191,13 @@ describe("HrLifecycleService (HR-01)", () => {
     expect(cleared.status).toBe("exited");
     expect(cleared.duesSettledPaise).toBe(85_000_00n);
     expect(f.db.employees[0]!.status).toBe("exited");
+  });
+
+  it("lists candidates with requisition fields", async () => {
+    f.db.reqs.push({ id: "req-l", tenantId: T, reqNo: "REQ-L", position: "Site Engineer" });
+    f.db.candidates.push({ id: "cand-l", tenantId: T, requisitionId: "req-l", name: "Ravi", stage: "interview" });
+    const rows = await svc.listCandidates(T) as Array<{ name: string; requisition: { reqNo: string } }>;
+    expect(rows[0]!.name).toBe("Ravi");
+    expect(rows[0]!.requisition.reqNo).toBe("REQ-L");
   });
 });

@@ -54,6 +54,8 @@ export default function LoginPage() {
           <span className="text-xs">
             Demo MFA: run <code>bash scripts/demo-code.sh</code> in the repo (rotates every 30s)
           </span>
+          <br />
+          <a href="/portal" className="text-xs" style={{ color: "var(--bo-primary)" }}>Buyer portal (OTP)</a>
         </p>
         <label className="mb-1 block text-xs uppercase tracking-wide" style={{ color: "var(--bo-text-muted)" }}>
           Organization

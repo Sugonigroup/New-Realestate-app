@@ -72,6 +72,34 @@ export class HrController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get("employees")
+  async employees(): Promise<unknown> {
+    await this.permissions.requireAsync("hr.read");
+    const ctx = getRequestContext();
+    return this.hr.listEmployees(ctx!.tenantId!);
+  }
+
+  @Get("payroll")
+  async payrollRuns(): Promise<unknown> {
+    await this.permissions.requireAsync("payroll.read");
+    const ctx = getRequestContext();
+    return this.hr.listPayrollRuns(ctx!.tenantId!);
+  }
+
+  @Get("recruitment/candidates")
+  async candidates(): Promise<unknown> {
+    await this.permissions.requireAsync("hr.read");
+    const ctx = getRequestContext();
+    return this.lifecycle.listCandidates(ctx!.tenantId!);
+  }
+
+  @Get("recruitment/requisitions")
+  async requisitions(): Promise<unknown> {
+    await this.permissions.requireAsync("hr.read");
+    const ctx = getRequestContext();
+    return this.lifecycle.listRequisitions(ctx!.tenantId!);
+  }
+
   @Post("attendance/check-in")
   async checkIn(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("hr.read");

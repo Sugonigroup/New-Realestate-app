@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { serverApi } from "@/lib/api";
+import { ADMIN_NAV, Subnav } from "@/app/subnav";
 
 interface AuditEvent {
   id: string;
@@ -30,6 +31,7 @@ export default async function AuditPage() {
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Audit log</h1>
+      <Subnav items={ADMIN_NAV} />
       <DataTable<AuditEvent> data={events} columns={columns} />
     </main>
   );

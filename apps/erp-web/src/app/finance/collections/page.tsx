@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { MoneyText } from "@buildos/ui";
 import { serverApi } from "@/lib/api";
 import ReceiptForm from "./receipt-form";
+import { FINANCE_NAV, Subnav } from "@/app/subnav";
 
 interface Receipt {
   id: string;
@@ -22,6 +23,7 @@ export default async function CollectionsPage() {
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Collections</h1>
+      <Subnav items={FINANCE_NAV} />
 
       <ReceiptForm />
 

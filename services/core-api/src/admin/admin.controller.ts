@@ -25,6 +25,18 @@ export class AdminController {
     });
   }
 
+  @Get("users")
+  async users(): Promise<unknown> {
+    await this.permissions.requireAsync("audit.read");
+    const ctx = getRequestContext();
+    return this.prisma.user.findMany({
+      where: { tenantId: ctx!.tenantId!, deletedAt: null },
+      select: { id: true, email: true, fullName: true, status: true, lastLoginAt: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
+
   @Get("roles")
   async roles(): Promise<unknown> {
     await this.permissions.requireAsync("audit.read");

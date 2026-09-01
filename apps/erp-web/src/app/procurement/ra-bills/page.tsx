@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { MoneyText } from "@buildos/ui";
 import { serverApi } from "@/lib/api";
+import { PROCUREMENT_NAV, Subnav } from "@/app/subnav";
+import SubmitRaBillForm from "./submit-form";
 
 interface RaBill {
   id: string;
@@ -31,6 +33,9 @@ export default async function RaBillsPage({
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">RA bills — AI verification</h1>
+      <Subnav items={PROCUREMENT_NAV} />
+
+      <SubmitRaBillForm projectId={projectId} />
 
       <div className="space-y-4">
         {bills.map((b) => {

@@ -14,6 +14,14 @@ export class OpsSupportService {
 
   // ── Risk Management ─────────────────────────────────────────────────────
 
+  async listRisks(tenantId: string) {
+    return this.prisma.riskRegister.findMany({
+      where: { tenantId },
+      orderBy: { riskScore: "desc" },
+      take: 200,
+    });
+  }
+
   async registerRisk(tenantId: string, input: {
     riskNo: string;
     title: string;
@@ -67,6 +75,14 @@ export class OpsSupportService {
   }
 
   // ── Customer Service ────────────────────────────────────────────────────
+
+  async listTickets(tenantId: string) {
+    return this.prisma.customerTicket.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+  }
 
   async raiseTicket(tenantId: string, input: {
     ticketNo: string;
@@ -155,6 +171,14 @@ export class OpsSupportService {
   }
 
   // ── Internal Audit & CAPA ───────────────────────────────────────────────
+
+  async listFindings(tenantId: string) {
+    return this.prisma.auditFinding.findMany({
+      where: { tenantId },
+      orderBy: { dueOn: "asc" },
+      take: 200,
+    });
+  }
 
   async raiseFinding(tenantId: string, input: {
     findingNo: string;
