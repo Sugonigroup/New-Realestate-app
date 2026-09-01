@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { MoneyText } from "@buildos/ui";
 import { serverApi } from "@/lib/api";
+import RaBillForm from "./ra-form";
 
 interface RaBill {
   id: string;
@@ -22,15 +22,22 @@ export default async function RaBillsPage({
 }) {
   const { projectId } = await searchParams;
   const token = (await cookies()).get("access_token")?.value;
+  const api = serverApi(token);
   const q = projectId ? `?projectId=${projectId}` : "";
   let bills: RaBill[] = [];
+  let projects: Array<{ id: string; code: string }> = [];
   try {
-    bills = (await serverApi(token).get<RaBill[]>(`/v1/procurement/ra-bills${q}`)) ?? [];
+    bills = (await api.get<RaBill[]>(`/v1/procurement/ra-bills${q}`)) ?? [];
   } catch { /* degraded */ }
+  try { projects = (await api.get<Array<{ id: string; code: string }>>("/v1/projects")) ?? []; } catch { /* degraded */ }
 
   return (
     <main className="p-6">
-      <h1 className="mb-4 text-xl font-semibold">RA bills — AI verification</h1>
+      <h2 className="mb-1 text-lg font-semibold">RA bills — AI verification</h2>
+      <p className="mb-4 text-sm" style={{ color: "var(--bo-text-muted)" }}>
+        Contractor BOQ/MB verifier. Not linked to PO or GRN.
+      </p>
+      <RaBillForm projects={projects} />
 
       <div className="space-y-4">
         {bills.map((b) => {
@@ -57,7 +64,7 @@ export default async function RaBillsPage({
               {b.anomalies && b.anomalies.length > 0 && (
                 <ul className="mt-2 text-sm" style={{ color: "var(--bo-warning)" }}>
                   {b.anomalies.map((a, i) => (
-                    <li key={i}>⚠ {a.kind}: expected {a.expected}, got {a.actual}</li>
+                    <li key={i}>{a.kind}: expected {a.expected}, got {a.actual}</li>
                   ))}
                 </ul>
               )}
@@ -74,11 +81,10 @@ export default async function RaBillsPage({
         })}
         {bills.length === 0 && (
           <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--bo-text-muted)" }}>
-            No RA bills yet. Submit via the procurement API or vendor portal.
+            No RA bills yet. Submit via the form above.
           </div>
         )}
       </div>
-      <Link href="/" className="mt-6 inline-block text-sm" style={{ color: "var(--bo-primary)" }}>← Back</Link>
     </main>
   );
 }

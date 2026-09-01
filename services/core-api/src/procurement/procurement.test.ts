@@ -23,6 +23,7 @@ function fakePrisma() {
     grns: [] as Row[],
     grnLines: [] as Row[],
     stock: [] as Row[],
+    raBills: [] as Row[],
   };
   let seq = 0;
   const nid = (p: string) => `${p}-${++seq}`;
@@ -38,10 +39,18 @@ function fakePrisma() {
   const prisma = {
     vendor: {
       findFirst: vi.fn(async ({ where }: any) => db.vendors.find(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.vendors.filter(match(where ?? {}))),
       create: vi.fn(async ({ data }: any) => { const r = toRow({ id: nid("v"), ...data }); db.vendors.push(r); return r; }),
     },
     purchaseRequisition: {
-      findFirst: vi.fn(async ({ where }: any) => db.prs.find(match(where))),
+      findFirst: vi.fn(async ({ where }: any) => {
+        const r = db.prs.find(match(where));
+        if (!r) return r;
+        return { ...r, lines: db.prLines.filter((l) => l.requisitionId === r.id) };
+      }),
+      findMany: vi.fn(async ({ where }: any) => db.prs.filter(match(where ?? {})).map((pr) => ({
+        ...pr, lines: db.prLines.filter((l) => l.requisitionId === pr.id),
+      }))),
       create: vi.fn(async ({ data }: any) => {
         const r = toRow({ id: nid("pr"), status: "draft", ...data });
         r.lines = child(r.id, "requisitionId", data.lines.create);
@@ -56,7 +65,24 @@ function fakePrisma() {
       }),
     },
     rfq: {
-      findFirst: vi.fn(async ({ where }: any) => db.rfqs.find(match(where))),
+      findFirst: vi.fn(async ({ where }: any) => {
+        const r = db.rfqs.find(match(where));
+        if (!r) return r;
+        return {
+          ...r,
+          lines: db.rfqLines.filter((l) => l.rfqId === r.id),
+          quotes: db.quotes.filter((q) => q.rfqId === r.id).map((q) => ({
+            ...q, lines: db.quoteLines.filter((l) => l.quoteId === q.id),
+          })),
+        };
+      }),
+      findMany: vi.fn(async ({ where }: any) => db.rfqs.filter(match(where ?? {})).map((r) => ({
+        ...r,
+        lines: db.rfqLines.filter((l) => l.rfqId === r.id),
+        quotes: db.quotes.filter((q) => q.rfqId === r.id).map((q) => ({
+          ...q, lines: db.quoteLines.filter((l) => l.quoteId === q.id),
+        })),
+      }))),
       create: vi.fn(async ({ data }: any) => {
         const r = toRow({ id: nid("rfq"), status: "open", ...data });
         r.lines = child(r.id, "rfqId", data.lines.create);
@@ -92,6 +118,9 @@ function fakePrisma() {
     rfqQuoteLine: { findMany: vi.fn(async ({ where }: any) => db.quoteLines.filter(match(where))) },
     purchaseOrder: {
       findFirst: vi.fn(async ({ where }: any) => db.pos.find(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.pos.filter(match(where ?? {})).map((po) => ({
+        ...po, lines: db.poLines.filter((l) => l.orderId === po.id),
+      }))),
       create: vi.fn(async ({ data }: any) => {
         const r = toRow({ id: nid("po"), status: "open", ...data });
         r.lines = child(r.id, "orderId", data.lines.create).map((l) => ({ receivedQty: 0, ...l }));
@@ -107,7 +136,11 @@ function fakePrisma() {
     },
     grn: {
       findFirst: vi.fn(async ({ where }: any) => db.grns.find(match(where))),
-      findMany: vi.fn(async ({ where }: any) => db.grns.filter(match(where))),
+      findMany: vi.fn(async ({ where }: any) => db.grns.filter(match(where ?? {})).map((g) => ({
+        ...g,
+        lines: (g.lines as Row[] | undefined) ?? db.grnLines.filter((l) => l.grnId === g.id),
+        order: g.order ?? db.pos.find((p) => p.id === g.orderId),
+      }))),
       create: vi.fn(async ({ data }: any) => {
         const r = toRow({ id: nid("grn"), status: "posted", ...data });
         r.order = db.pos.find((x) => x.id === data.orderId);
@@ -133,6 +166,9 @@ function fakePrisma() {
         }
         return s;
       }),
+    },
+    raBill: {
+      findMany: vi.fn(async ({ where }: any) => db.raBills.filter(match(where ?? {}))),
     },
   };
 
@@ -366,5 +402,56 @@ describe("ProcurementService chain", () => {
       grnNo: "GRN-Z", orderId: po.id, projectId: PROJECT, receivedAt: new Date(),
       lines: [{ poLineId: "pol-from-elsewhere", qty: 1, acceptedQty: 1 }],
     })).rejects.toThrow(BadRequestException);
+  });
+
+  it("lists vendors, PRs, RFQs, POs and GRNs for the tenant", async () => {
+    await seedChain(f.db);
+    const q = await svc.receiveQuote(T, {
+      rfqId: "rfq-1", vendorId: "v-low", deliveryDays: 7,
+      lines: [{ materialId: "M-CEM", qty: 1000, ratePaise: 38500n }],
+    });
+    const po = await svc.awardQuote(T, { rfqId: "rfq-1", quoteId: q.id, poNo: "PO-001", projectId: PROJECT });
+    const poLine = (po.lines as Row[])[0]!;
+    await svc.receiveGrn(T, {
+      grnNo: "GRN-001", orderId: po.id, projectId: PROJECT, receivedAt: new Date(),
+      lines: [{ poLineId: poLine.id, qty: 400, acceptedQty: 400 }],
+    });
+    expect(await svc.listVendors(T)).toHaveLength(2);
+    expect((await svc.listPrs(T))[0]!.lines).toHaveLength(1);
+    const rfqs = await svc.listRfqs(T);
+    expect(rfqs).toHaveLength(1);
+    expect(rfqs[0]!.quotes).toHaveLength(1);
+    expect(await svc.getRfq(T, "rfq-1")).toMatchObject({ rfqNo: "RFQ-001" });
+    expect((await svc.listOrders(T))[0]!.poNo).toBe("PO-001");
+    expect((await svc.listGrns(T))[0]!.grnNo).toBe("GRN-001");
+  });
+
+  it("dashboard counts draft PRs, open RFQs, open POs, GRNs and RA anomalies", async () => {
+    f.db.prs.push({ id: "pr-d", tenantId: T, reqNo: "PR-D", status: "draft" });
+    f.db.rfqs.push({ id: "rfq-o", tenantId: T, rfqNo: "RFQ-O", status: "open" });
+    f.db.pos.push({ id: "po-o", tenantId: T, poNo: "PO-O", status: "open" });
+    f.db.pos.push({ id: "po-p", tenantId: T, poNo: "PO-P", status: "partial" });
+    f.db.grns.push({ id: "g-1", tenantId: T, grnNo: "GRN-D", status: "posted" });
+    f.db.raBills.push({ id: "ra-1", tenantId: T, anomalies: [{ kind: "qty" }] });
+    f.db.raBills.push({ id: "ra-2", tenantId: T, anomalies: [] });
+    const dash = await svc.dashboard(T);
+    expect(dash.kpis).toEqual({
+      draftPrCount: 1,
+      openRfqCount: 1,
+      openPoCount: 2,
+      grnCount: 1,
+      raAnomalyCount: 1,
+    });
+  });
+
+  it("award still refuses a duplicate poNo", async () => {
+    await seedChain(f.db);
+    f.db.pos.push({ id: "po-exist", tenantId: T, poNo: "PO-0001", status: "open" });
+    const q = await svc.receiveQuote(T, {
+      rfqId: "rfq-1", vendorId: "v-low", deliveryDays: 7,
+      lines: [{ materialId: "M-CEM", qty: 1000, ratePaise: 38500n }],
+    });
+    await expect(svc.awardQuote(T, { rfqId: "rfq-1", quoteId: q.id, poNo: "PO-0001", projectId: PROJECT }))
+      .rejects.toThrow(ConflictException);
   });
 });

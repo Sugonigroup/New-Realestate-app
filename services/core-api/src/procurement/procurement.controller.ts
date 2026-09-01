@@ -70,6 +70,55 @@ export class ProcurementController {
     private readonly permissions: PermissionsService,
   ) {}
 
+  @Get("dashboard")
+  async dashboard(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.dashboard(ctx!.tenantId!);
+  }
+
+  @Get("vendors")
+  async vendors(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listVendors(ctx!.tenantId!);
+  }
+
+  @Get("prs")
+  async prs(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listPrs(ctx!.tenantId!);
+  }
+
+  @Get("rfqs")
+  async rfqs(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listRfqs(ctx!.tenantId!);
+  }
+
+  @Get("rfqs/:id")
+  async rfq(@Param("id") id: string): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.getRfq(ctx!.tenantId!, id);
+  }
+
+  @Get("orders")
+  async orders(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listOrders(ctx!.tenantId!);
+  }
+
+  @Get("grns")
+  async grns(): Promise<unknown> {
+    await this.permissions.requireAsync("procurement.read");
+    const ctx = getRequestContext();
+    return this.procurement.listGrns(ctx!.tenantId!);
+  }
+
   @Post("vendors")
   async createVendor(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("procurement.vendor.create");
