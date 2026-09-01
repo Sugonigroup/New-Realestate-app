@@ -93,6 +93,13 @@ export class HrController {
     return this.lifecycle.listCandidates(ctx!.tenantId!);
   }
 
+  @Get("recruitment/requisitions")
+  async requisitions(): Promise<unknown> {
+    await this.permissions.requireAsync("hr.read");
+    const ctx = getRequestContext();
+    return this.lifecycle.listRequisitions(ctx!.tenantId!);
+  }
+
   @Post("attendance/check-in")
   async checkIn(@Body() body: unknown): Promise<unknown> {
     await this.permissions.requireAsync("hr.read");

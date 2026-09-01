@@ -25,7 +25,18 @@ export class HrLifecycleService {
       where: { tenantId },
       orderBy: { createdAt: "desc" },
       take: 200,
-      include: { requisition: { select: { reqNo: true, position: true } } },
+      include: {
+        requisition: { select: { reqNo: true, position: true, status: true } },
+        offers: { orderBy: { createdAt: "desc" }, take: 5 },
+      },
+    });
+  }
+
+  async listRequisitions(tenantId: string) {
+    return this.prisma.jobRequisition.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
     });
   }
 

@@ -3,6 +3,7 @@ import { MoneyText } from "@buildos/ui";
 import { asPaise, loadList } from "@/lib/load";
 import { HR_NAV, Subnav } from "@/app/subnav";
 import ExitForm from "./exit-form";
+import ClearExitForm from "./clear-exit-form";
 
 interface Employee {
   id: string;
@@ -39,6 +40,7 @@ export default async function EmployeesPage() {
               <MoneyText paise={asPaise(e.basicMonthlyPaise)} />
               <span className="rounded px-2 py-1 text-xs" style={{ background: "var(--bo-bg)" }}>{e.status}</span>
               {e.status === "active" && <ExitForm employeeId={e.id} />}
+              {e.status !== "exited" && <ClearExitForm employeeId={e.id} />}
             </div>
           </div>
         ))}

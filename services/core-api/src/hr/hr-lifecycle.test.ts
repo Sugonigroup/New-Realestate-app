@@ -38,6 +38,7 @@ function fakePrisma() {
         Object.assign(r, data);
         return r;
       }),
+      findMany: vi.fn(async ({ where }: any) => db.reqs.filter(match(where))),
     },
     jobCandidate: {
       findFirst: vi.fn(async ({ where, include }: any) => {
@@ -57,6 +58,7 @@ function fakePrisma() {
         return db.candidates.filter(match(where)).map((c) => ({
           ...c,
           requisition: include?.requisition ? db.reqs.find((r) => r.id === c.requisitionId) : undefined,
+          offers: include?.offers ? db.offers.filter((o) => o.candidateId === c.id) : undefined,
         }));
       }),
     },

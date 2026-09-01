@@ -4,6 +4,7 @@ import { useState } from "react";
 import { browserApi } from "@/lib/api";
 import { PROJECT_NAV, Subnav } from "@/app/subnav";
 import PourForm from "./pour-form";
+import PourFollowup from "./pour-followup";
 
 /** NCR from POST /v1/siteops/quality/ncrs. */
 export default function QualityPage() {
@@ -35,6 +36,7 @@ export default function QualityPage() {
       <h1 className="mb-1 text-xl font-semibold">Quality NCR</h1>
       <Subnav items={PROJECT_NAV} />
       <PourForm />
+      <PourFollowup />
       <form onSubmit={submit} className="grid max-w-xl gap-3">
         <input required placeholder="NCR no" value={ncrNo} onChange={(e) => setNo(e.target.value)} className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
         <input required placeholder="Project id" value={projectId} onChange={(e) => setProjectId(e.target.value)} className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />

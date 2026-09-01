@@ -75,6 +75,11 @@ export default function HseActions({ projectId }: { projectId?: string }) {
         <input required placeholder="Location" value={location} onChange={(e) => setLoc(e.target.value)} className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
         <input required placeholder="Safety officer" value={safetyOfficer} onChange={(e) => setOfficer(e.target.value)} className="rounded border px-3 py-2 text-sm" style={{ borderColor: "var(--bo-border)" }} />
         <button type="submit" disabled={busy} className="rounded px-3 py-2 text-sm font-medium text-white disabled:opacity-50" style={{ background: "var(--bo-primary)" }}>Request permit</button>
+        {permitNo && (
+          <button type="button" disabled={busy} onClick={() => void browserApi().post(`/v1/siteops/hse/permits/${encodeURIComponent(permitNo)}/approve`, {}).then(() => router.refresh()).catch((err: Error) => setError(err.message))} className="rounded px-3 py-2 text-sm font-medium text-white disabled:opacity-50" style={{ background: "var(--bo-primary)" }}>
+            Approve permit
+          </button>
+        )}
       </form>
       <form onSubmit={incident} className="grid gap-2 rounded-lg border p-4" style={{ borderColor: "var(--bo-border)", background: "var(--bo-surface)" }}>
         <div className="text-xs uppercase" style={{ color: "var(--bo-text-muted)" }}>Incident</div>

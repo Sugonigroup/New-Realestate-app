@@ -3,6 +3,7 @@ import { asPaise, loadList } from "@/lib/load";
 import Link from "next/link";
 import { PostButton } from "@/app/post-button";
 import CreateBudgetForm from "./create-form";
+import ScenarioForm from "./scenario-form";
 
 interface BudgetLine { costCenter: string; accountCode: string; period: string; amountPaise: string }
 interface Budget {
@@ -43,6 +44,7 @@ export default async function BudgetingPage() {
                 <MoneyText paise={asPaise(l.amountPaise)} />
               </div>
             ))}
+            <ScenarioForm budgetId={b.id} />
           </div>
         ))}
         {rows.length === 0 && <div className="px-4 py-6 text-center text-sm" style={{ color: "var(--bo-text-muted)" }}>No budgets.</div>}
