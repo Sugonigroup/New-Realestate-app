@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { browserApi } from "@/lib/api";
+import { SALES_NAV, Subnav } from "@/app/subnav";
 
 interface Booking {
   id: string;

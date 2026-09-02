@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
 import { browserApi } from "@/lib/api";
+import { ADMIN_NAV, Subnav } from "@/app/subnav";
 
 interface RoleRow { code: string; name: string; external: boolean; grants: string[]; denied: string[] }
 
