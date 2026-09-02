@@ -1,8 +1,9 @@
-import { cookies } from "next/headers";
+"use client";
+
+import { useEffect, useState } from "react";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-import { serverApi } from "@/lib/api";
-import { ADMIN_NAV, Subnav } from "@/app/subnav";
+import { browserApi } from "@/lib/api";
 
 interface RoleRow { code: string; name: string; external: boolean; grants: string[]; denied: string[] }
 
@@ -14,12 +15,11 @@ const columns: ColumnDef<RoleRow, unknown>[] = [
 ];
 
 /** Role matrix (U4, read-only view; edits via API). */
-export default async function RolesPage() {
-  const token = (await cookies()).get("access_token")?.value;
-  let roles: RoleRow[] = [];
-  try {
-    roles = (await serverApi(token).get<RoleRow[]>("/v1/admin/roles")) ?? [];
-  } catch { /* degraded */ }
+export default function RolesPage() {
+  const [roles, setRoles] = useState<RoleRow[]>([]);
+  useEffect(() => {
+    browserApi().get<RoleRow[]>("/v1/admin/roles").then((r) => setRoles(r ?? [])).catch(() => {});
+  }, []);
   return (
     <main className="p-6">
       <h1 className="mb-4 text-xl font-semibold">Role matrix</h1>

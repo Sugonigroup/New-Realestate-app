@@ -1,9 +1,10 @@
-import { cookies } from "next/headers";
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { DataTable } from "@buildos/ui";
 import type { ColumnDef } from "@tanstack/react-table";
-import { serverApi } from "@/lib/api";
-import { SALES_NAV, Subnav } from "@/app/subnav";
+import { browserApi } from "@/lib/api";
 
 interface Booking {
   id: string;
@@ -41,13 +42,12 @@ const columns: ColumnDef<Booking, unknown>[] = [
   },
 ];
 
-/** Bookings list (U1). */
-export default async function BookingsPage() {
-  const token = (await cookies()).get("access_token")?.value;
-  let bookings: Booking[] = [];
-  try {
-    bookings = (await serverApi(token).get<Booking[]>("/v1/bookings")) ?? [];
-  } catch { /* degraded */ }
+/** Bookings list (U1) — client component: cell renderers can't cross the RSC boundary. */
+export default function BookingsPage() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  useEffect(() => {
+    browserApi().get<Booking[]>("/v1/bookings").then(setBookings).catch(() => {});
+  }, []);
 
   return (
     <main className="p-6">

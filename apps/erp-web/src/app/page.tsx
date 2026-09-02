@@ -34,48 +34,48 @@ export default async function DashboardPage() {
     .catch(() => []) as unknown[];
 
   return (
-    <main className="p-6">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <span
-          className="rounded px-2 py-1 text-xs"
-          style={{
-            background: health.status === "ok" ? "var(--bo-success)" : "var(--bo-warning)",
-            color: "white",
-          }}
-        >
-          API: {health.status}
-        </span>
-      </header>
-      <section className="flex flex-wrap gap-4">
-        <StatCard label="Total Leads" value={funnel ? funnel.totalLeads : "—"} deltaPct={undefined} />
-        <StatCard
-          label="Weighted Pipeline"
-          value={forecast ? <MoneyText paise={BigInt(forecast.weightedPipelinePaise ?? 0)} short /> : "—"}
-          tone="success"
-        />
-        <StatCard
-          label="Gross Pipeline"
-          value={forecast ? <MoneyText paise={BigInt(forecast.grossPipelinePaise ?? 0)} short /> : "—"}
-        />
-        <StatCard
-          label="Site Visits"
-          value={visits ? `${visits.completed}/${visits.totalVisits}` : "—"}
-          deltaPct={visits ? visits.visitToOpportunityPct : undefined}
-          tone="success"
-        />
-        <StatCard label="Lead → Won" value={funnel ? `${funnel.winPct}%` : "—"} tone="success" />
-        <StatCard
-          label="AI Recommendations"
-          value={Array.isArray(pendingRecs) ? pendingRecs.length : 0}
-          tone={Array.isArray(pendingRecs) && pendingRecs.length > 0 ? "warning" : undefined}
-        />
-      </section>
-      <p className="mt-8 text-sm" style={{ color: "var(--bo-text-muted)" }}>
-        Live KPIs from CRM analytics · {" "}
-        {forecast ? `${forecast.openCount} open opportunities · ` : ""}
-        won pipeline {forecast ? <MoneyText paise={BigInt(forecast.wonPaise ?? 0)} short /> : "—"}.
-      </p>
-    </main>
+    <div className="p-6">
+        <header className="mb-6 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <span
+            className="rounded px-2 py-1 text-xs"
+            style={{
+              background: health.status === "ok" ? "var(--bo-success)" : "var(--bo-warning)",
+              color: "white",
+            }}
+          >
+            API: {health.status}
+          </span>
+        </header>
+        <section className="flex flex-wrap gap-4">
+          <StatCard label="Total Leads" value={funnel ? funnel.totalLeads : "—"} deltaPct={undefined} />
+          <StatCard
+            label="Weighted Pipeline"
+            value={forecast ? <MoneyText paise={BigInt(forecast.weightedPipelinePaise ?? 0)} short /> : "—"}
+            tone="success"
+          />
+          <StatCard
+            label="Gross Pipeline"
+            value={forecast ? <MoneyText paise={BigInt(forecast.grossPipelinePaise ?? 0)} short /> : "—"}
+          />
+          <StatCard
+            label="Site Visits"
+            value={visits ? `${visits.completed}/${visits.totalVisits}` : "—"}
+            deltaPct={visits ? visits.visitToOpportunityPct : undefined}
+            tone="success"
+          />
+          <StatCard label="Lead → Won" value={funnel ? `${funnel.winPct}%` : "—"} tone="success" />
+          <StatCard
+            label="AI Recommendations"
+            value={Array.isArray(pendingRecs) ? pendingRecs.length : 0}
+            tone={Array.isArray(pendingRecs) && pendingRecs.length > 0 ? "warning" : undefined}
+          />
+        </section>
+        <p className="mt-8 text-sm" style={{ color: "var(--bo-text-muted)" }}>
+          Live KPIs from CRM analytics · {" "}
+          {forecast ? `${forecast.openCount} open opportunities · ` : ""}
+          won pipeline {forecast ? <MoneyText paise={BigInt(forecast.wonPaise ?? 0)} short /> : "—"}.
+        </p>
+    </div>
   );
 }
