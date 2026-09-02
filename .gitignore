@@ -8,3 +8,5 @@ coverage/
 
 # Next.js build output
 apps/erp-web/.next/
+apps/erp-web/tsconfig.tsbuildinfo
+*.tsbuildinfo
